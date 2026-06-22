@@ -18,11 +18,18 @@ export function mountApp(root: HTMLElement): void {
 
   const main = el("div", "layout");
   const stage = el("div", "stage");
+
+  // canvas lives inside a classic Mac window (pinstripe title bar + close box)
+  const win = el("div", "window");
+  const winbar = el("div", "winbar");
+  winbar.innerHTML = `<span class="close-box"></span><span class="win-title">untitled-1</span>`;
   const canvasWrap = el("div", "canvas-wrap");
   const canvas = document.createElement("canvas");
   canvas.className = "output";
   canvasWrap.appendChild(canvas);
-  stage.appendChild(canvasWrap);
+  win.appendChild(winbar);
+  win.appendChild(canvasWrap);
+  stage.appendChild(win);
 
   const side = el("aside", "sidebar");
 
