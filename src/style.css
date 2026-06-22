@@ -113,15 +113,27 @@ html, body {
 .canvas-wrap { padding: 3px; background: var(--win); line-height: 0; }
 .output {
   display: block;
-  max-width: min(70vw, 1000px);
+  max-width: min(58vw, 1000px);
   max-height: calc(100vh - 160px);
   image-rendering: pixelated;
   border: 1px solid var(--platinum-sh);
 }
 
-/* ---- sidebar (palette window) ---- */
+/* ---- left panel: filter browser ---- */
+.panel-left {
+  width: 220px;
+  flex: none;
+  border-right: 1px solid var(--ink);
+  background: var(--platinum);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- right panel: the stack ---- */
 .sidebar {
-  width: 324px;
+  width: 330px;
+  flex: none;
   border-left: 1px solid var(--ink);
   background: var(--platinum);
   overflow-y: auto;
@@ -149,6 +161,10 @@ html, body {
 
 /* palette of filter chips */
 .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* left browser: single-column list, left-aligned, tighter sections */
+.panel-left .palette { grid-template-columns: 1fr; gap: 4px; }
+.panel-left .btn.chip { text-align: left; }
+.panel-left .panel { padding: 8px 10px; }
 
 /* ---- buttons (classic Mac rounded rects) ---- */
 .btn {

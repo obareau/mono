@@ -18,7 +18,9 @@ export function mountApp(root: HTMLElement): void {
   const headerRight = el("div", "topbar-right");
   header.appendChild(headerRight);
 
+  // three-panel Lightroom-style layout: filter browser | canvas | stack
   const main = el("div", "layout");
+  const left = el("aside", "panel-left");
   const stage = el("div", "stage");
 
   // canvas lives inside a classic Mac window (pinstripe title bar + close box)
@@ -35,6 +37,7 @@ export function mountApp(root: HTMLElement): void {
 
   const side = el("aside", "sidebar");
 
+  main.appendChild(left);
   main.appendChild(stage);
   main.appendChild(side);
   root.appendChild(header);
@@ -147,22 +150,35 @@ export function mountApp(root: HTMLElement): void {
     renderToCanvas(canvas, result);
   }
 
+  // ---- left panel: filter browser, grouped by category (static) ----
+  const CATEGORY_LABELS: Record<string, string> = {
+    color: "COLOR", tone: "TONE", signal: "SIGNAL FX", dither: "DITHER",
+    screen: "SCREENS", geometry: "GEOMETRY", disrupt: "DISRUPTORS", ascii: "ASCII",
+  };
+  function renderLeft() {
+    left.innerHTML = "";
+    const seen = new Set<string>();
+    for (const f of FILTERS) {
+      if (!seen.has(f.category)) {
+        seen.add(f.category);
+        const sect = el("section", "panel");
+        sect.appendChild(heading(CATEGORY_LABELS[f.category] ?? f.category.toUpperCase()));
+        const grid = el("div", "palette");
+        for (const g of FILTERS.filter((x) => x.category === f.category)) {
+          const b = btn(g.name.toUpperCase(), "chip", () => store.addFilter(g.id));
+          b.dataset.cat = g.category;
+          grid.appendChild(b);
+        }
+        sect.appendChild(grid);
+        left.appendChild(sect);
+      }
+    }
+  }
+
+  // ---- right panel: the active stack ----
   function renderSidebar() {
     side.innerHTML = "";
 
-    // filter palette
-    const palette = el("section", "panel");
-    palette.appendChild(heading("ADD FILTER"));
-    const grid = el("div", "palette");
-    for (const f of FILTERS) {
-      const b = btn(f.name.toUpperCase(), "chip", () => store.addFilter(f.id));
-      b.dataset.cat = f.category;
-      grid.appendChild(b);
-    }
-    palette.appendChild(grid);
-    side.appendChild(palette);
-
-    // active stack
     const stackPanel = el("section", "panel");
     const h = heading(`STACK · ${store.stack.length}`);
     if (store.stack.length) {
@@ -173,7 +189,7 @@ export function mountApp(root: HTMLElement): void {
 
     if (!store.stack.length) {
       const empty = el("p", "empty");
-      empty.textContent = "No filters. Add one above — they apply top to bottom.";
+      empty.textContent = "No filters. Pick one from the left — they apply top to bottom.";
       stackPanel.appendChild(empty);
     }
 
@@ -213,6 +229,7 @@ export function mountApp(root: HTMLElement): void {
   });
   store.subscribeRender(() => redraw());
 
+  renderLeft();
   renderSidebar();
   redraw();
 }
