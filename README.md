@@ -43,8 +43,12 @@ Installable as a PWA (works offline). Open the link and choose "Install" / "Add 
 | **Stipple** | Ink dots — size, density, or **Poisson-disk** (blue-noise) modes; clean SVG/PDF export |
 | **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness (SVG/PDF export) |
 | **Contour** | Topographic iso-luminance lines, optional band shading |
+| **XDoG Ink** | Difference-of-Gaussians edges — turns a photo into a bold black line drawing |
+| **Engraving** | Flow-based hatching that curves around forms (LIC), banknote/engraving look |
 | **Signal FX** | Image-as-signal: Echo, Distortion, Low-Pass, High-Pass, Flanger, Chorus |
 | **Geometry** | Pixel Mosaic, Adaptive Mosaic (cells by luminance), Triangulation (low-poly), Tessellation (hex), Voronoi |
+| **Truchet** | Tone-driven arc/diagonal tiles — a maze-like graphic weave |
+| **Circle Pack** | Non-overlapping discs, density follows tone — clean SVG/PDF export |
 | **Disruptors** | Block Displace, Bit Crush, Glyph Storm, Scanlines, Contour Shock, Scan Tear — glitch effects ported from the [terminal-synth](https://github.com/obareau/terminal-synth) VJ tool |
 | **Offset** | Misregistration ghosting + sliced scan-shift glitch |
 | **ASCII** | Text-mode rendering — **type the character ramp yourself**, export `.txt` / `.html` |

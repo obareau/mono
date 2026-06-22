@@ -15,7 +15,11 @@ import { clusteredDot } from "./clusteredDot";
 import { stipple } from "./stipple";
 import { hatch } from "./hatch";
 import { contour } from "./contour";
+import { xdog } from "./xdog";
+import { gravure } from "./gravure";
 import { GEOMETRY } from "./geometry";
+import { truchet } from "./truchet";
+import { circlePack } from "./circlePack";
 import { DISRUPTORS } from "./disruptors";
 import { offset } from "./offset";
 import { ascii } from "./ascii";
@@ -39,7 +43,11 @@ export const FILTERS: Filter[] = [
   stipple,
   hatch,
   contour,
+  xdog,
+  gravure,
   ...GEOMETRY,
+  truchet,
+  circlePack,
   ...DISRUPTORS,
   offset,
   ascii,

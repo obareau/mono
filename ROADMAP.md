@@ -19,6 +19,13 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
       SVG/PDF appear when such a filter is in the stack and run at native resolution.
       Hatch also exports as variable-width line segments — every screen now vectorizes.
 
+## New filter batch (v1.1) ✅
+
+- [x] **XDoG Ink** — difference-of-Gaussians line drawing
+- [x] **Engraving** — flow-based (LIC) hatching that follows image forms
+- [x] **Truchet** — tone-driven arc/diagonal tiles
+- [x] **Circle Pack** — tone-density disc packing, vector-exportable
+
 ## Ongoing — filters — all shipped ✅
 
 - [x] Voronoi tessellation (jittered seeds, nearest-cell flat fill)
