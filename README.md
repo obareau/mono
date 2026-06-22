@@ -77,8 +77,9 @@ error-diffusion is intentionally CPU/sequential, screens are per-pixel and GPU-r
 
 ## Roadmap
 
-See [ROADMAP.md](./ROADMAP.md). Near-term: live deploy, full-resolution export, and
-shareable stack presets; then vector (SVG/PDF) export and a WebGL2/worker performance pass.
+See [ROADMAP.md](./ROADMAP.md). Tier 1 (live deploy, full-resolution export, shareable
+presets) and Tier 2 (SVG/PDF vector export) are done; ongoing work adds more screens and
+geometry filters. MONO° stays a still-image tool — motion lives in terminal-synth.
 
 ## License
 
