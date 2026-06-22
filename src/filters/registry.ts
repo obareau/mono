@@ -2,6 +2,7 @@ import type { Filter } from "./types";
 import { tone } from "./tone";
 import { threshold } from "./threshold";
 import { errorDiffusion } from "./floydSteinberg";
+import { ostromoukhov } from "./ostromoukhov";
 import { riemersma } from "./riemersma";
 import { bayer } from "./bayer";
 import { blueNoise } from "./blueNoise";
@@ -18,6 +19,7 @@ export const FILTERS: Filter[] = [
   tone,
   threshold,
   errorDiffusion,
+  ostromoukhov,
   riemersma,
   bayer,
   blueNoise,
