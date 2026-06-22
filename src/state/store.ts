@@ -40,7 +40,7 @@ class Store {
   addFilter(filterId: string) {
     const f = getFilter(filterId);
     if (!f) return;
-    this.stack.push({ uid: uidCounter++, filterId, params: defaultParams(f), enabled: true });
+    this.stack.push({ uid: uidCounter++, filterId, params: defaultParams(f), enabled: true, opacity: 1 });
     this.emit();
   }
 
@@ -63,6 +63,22 @@ class Store {
     this.emit();
   }
 
+  /** Drag-to-reorder: move `fromUid` to the slot currently held by `toUid`. */
+  reorder(fromUid: number, toUid: number) {
+    const from = this.stack.findIndex((s) => s.uid === fromUid);
+    const to = this.stack.findIndex((s) => s.uid === toUid);
+    if (from < 0 || to < 0 || from === to) return;
+    const [it] = this.stack.splice(from, 1);
+    this.stack.splice(to, 0, it);
+    this.emit();
+  }
+
+  setOpacity(uid: number, value: number) {
+    const it = this.stack.find((s) => s.uid === uid);
+    if (it) it.opacity = value;
+    this.emitRender();
+  }
+
   setParam(uid: number, key: string, value: number | boolean | string) {
     const it = this.stack.find((s) => s.uid === uid);
     if (it) it.params[key] = value;
@@ -76,18 +92,18 @@ class Store {
 
   /** Serialize the stack for presets (no uids). */
   serialize() {
-    return this.stack.map((s) => ({ filterId: s.filterId, params: { ...s.params }, enabled: s.enabled }));
+    return this.stack.map((s) => ({ filterId: s.filterId, params: { ...s.params }, enabled: s.enabled, opacity: s.opacity ?? 1 }));
   }
 
   /** Replace the stack from a preset, dropping unknown filters and merging params with defaults. */
-  setStack(items: { filterId: string; params: ParamValues; enabled: boolean }[]) {
+  setStack(items: { filterId: string; params: ParamValues; enabled: boolean; opacity?: number }[]) {
     this.stack = [];
     for (const it of items) {
       const f = getFilter(it.filterId);
       if (!f) continue;
       const params = defaultParams(f);
       for (const d of f.params) if (it.params[d.key] !== undefined) params[d.key] = it.params[d.key];
-      this.stack.push({ uid: uidCounter++, filterId: it.filterId, params, enabled: it.enabled !== false });
+      this.stack.push({ uid: uidCounter++, filterId: it.filterId, params, enabled: it.enabled !== false, opacity: it.opacity ?? 1 });
     }
     this.emit();
   }

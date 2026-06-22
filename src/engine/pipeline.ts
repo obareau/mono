@@ -7,6 +7,18 @@ export interface StackItem {
   filterId: string;
   params: ParamValues;
   enabled: boolean;
+  opacity?: number; // 0..1 blend of this filter's result with its input (default 1)
+}
+
+// Apply a buffer filter, then blend its result toward the input by (1 - opacity).
+function applyItem(filter: { apply?: (g: Gray, w: number, h: number, p: ParamValues) => Gray }, gray: Gray, w: number, h: number, item: StackItem): Gray {
+  if (!filter.apply) return gray;
+  const op = item.opacity ?? 1;
+  if (op >= 1) return filter.apply(gray, w, h, item.params);
+  const input = gray.slice(); // keep the pre-filter buffer (filters may mutate in place)
+  const out = filter.apply(gray, w, h, item.params);
+  for (let i = 0; i < out.length; i++) out[i] = input[i] + (out[i] - input[i]) * op;
+  return out;
 }
 
 export interface PipelineResult {
@@ -33,9 +45,7 @@ export function runPipeline(source: SourceImage, stack: StackItem[]): PipelineRe
     if (filter.terminal && filter.render) {
       return { gray, w, h, terminal: filter.render(gray, w, h, item.params) };
     }
-    if (filter.apply) {
-      gray = filter.apply(gray, w, h, item.params);
-    }
+    gray = applyItem(filter, gray, w, h, item);
   }
   return { gray, w, h };
 }
@@ -61,7 +71,7 @@ export function runToVector(source: SourceImage, stack: StackItem[]): VectorScen
     const filter = getFilter(item.filterId);
     if (!filter) continue;
     if (filter.fromRGB) gray = filter.fromRGB(source.r, source.g, source.b, w, h, item.params);
-    else if (filter.apply) gray = filter.apply(gray, w, h, item.params);
+    else gray = applyItem(filter, gray, w, h, item);
   }
   const vf = getFilter(stack[idx].filterId)!;
   return vf.toVector!(gray, w, h, stack[idx].params);

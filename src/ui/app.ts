@@ -199,6 +199,25 @@ export function mountApp(root: HTMLElement): void {
       if (!item.enabled) card.classList.add("off");
       if (f.terminal) card.classList.add("terminal");
 
+      // drag-to-reorder
+      card.draggable = true;
+      card.addEventListener("dragstart", (e) => {
+        e.dataTransfer?.setData("text/plain", String(item.uid));
+        card.classList.add("dragging-card");
+      });
+      card.addEventListener("dragend", () => card.classList.remove("dragging-card"));
+      card.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        card.classList.add("drop-target");
+      });
+      card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
+      card.addEventListener("drop", (e) => {
+        e.preventDefault();
+        card.classList.remove("drop-target");
+        const from = Number(e.dataTransfer?.getData("text/plain"));
+        if (from) store.reorder(from, item.uid);
+      });
+
       const bar = el("div", "fcard-bar");
       const title = el("span", "fcard-title");
       title.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
@@ -215,6 +234,8 @@ export function mountApp(root: HTMLElement): void {
       card.appendChild(bar);
 
       const body = el("div", "fcard-body");
+      // per-filter opacity (skip terminal filters — they don't blend)
+      if (!f.terminal) body.appendChild(opacityRow(item));
       for (const def of f.params) body.appendChild(buildControl(item, def));
       card.appendChild(body);
       stackPanel.appendChild(card);
@@ -249,6 +270,27 @@ function iconBtn(glyph: string, title: string, onClick: () => void): HTMLButtonE
   b.title = title;
   b.addEventListener("click", onClick);
   return b;
+}
+
+function opacityRow(item: { uid: number; opacity?: number }): HTMLElement {
+  const row = el("label", "ctl");
+  const name = el("span", "ctl-label");
+  name.textContent = "Mix";
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = "0";
+  input.max = "1";
+  input.step = "0.01";
+  input.value = String(item.opacity ?? 1);
+  const val = el("span", "ctl-val");
+  const fmt = (n: number) => `${Math.round(n * 100)}%`;
+  val.textContent = fmt(item.opacity ?? 1);
+  input.addEventListener("input", () => {
+    val.textContent = fmt(parseFloat(input.value));
+    store.setOpacity(item.uid, parseFloat(input.value));
+  });
+  row.append(name, input, val);
+  return row;
 }
 
 function heading(text: string): HTMLElement {

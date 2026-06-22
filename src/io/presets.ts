@@ -7,6 +7,7 @@ export interface PresetItem {
   filterId: string;
   params: ParamValues;
   enabled: boolean;
+  opacity?: number;
 }
 
 const LS_KEY = "mono:stack";
@@ -20,15 +21,15 @@ function b64decode(b64: string): string {
 }
 
 export function encodePreset(items: PresetItem[]): string {
-  const compact = items.map((i) => ({ f: i.filterId, p: i.params, e: i.enabled }));
+  const compact = items.map((i) => ({ f: i.filterId, p: i.params, e: i.enabled, o: i.opacity ?? 1 }));
   return b64encode(JSON.stringify(compact));
 }
 
 export function decodePreset(b64: string): PresetItem[] | null {
   try {
-    const arr = JSON.parse(b64decode(b64)) as { f: string; p: ParamValues; e: boolean }[];
+    const arr = JSON.parse(b64decode(b64)) as { f: string; p: ParamValues; e: boolean; o?: number }[];
     if (!Array.isArray(arr)) return null;
-    return arr.map((o) => ({ filterId: o.f, params: o.p ?? {}, enabled: o.e !== false }));
+    return arr.map((o) => ({ filterId: o.f, params: o.p ?? {}, enabled: o.e !== false, opacity: o.o ?? 1 }));
   } catch {
     return null;
   }
