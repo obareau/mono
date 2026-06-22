@@ -26,7 +26,7 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [x] True Poisson-disk stippling (variable-radius Bridson, density follows tone) — a
       "poisson" mode on the Stipple filter, alongside size/density
 - [x] Hatch vector export — variable-width line segments (lines/crosshatch/spiral)
-- [ ] Custom **threshold-map** dithering (use any image as the dither mask)
+- [x] Custom **threshold-map** dithering — load any image as the dither screen (Bayer fallback)
 - [ ] ASCII export to coloured HTML
 
 ## Scope — MONO° is a still-image tool

@@ -4,6 +4,7 @@ import { tone } from "./tone";
 import { SIGNAL_FX } from "./signalFx";
 import { threshold } from "./threshold";
 import { errorDiffusion } from "./floydSteinberg";
+import { thresholdMap } from "./thresholdMap";
 import { ostromoukhov } from "./ostromoukhov";
 import { riemersma } from "./riemersma";
 import { bayer } from "./bayer";
@@ -30,6 +31,7 @@ export const FILTERS: Filter[] = [
   ostromoukhov,
   riemersma,
   bayer,
+  thresholdMap,
   blueNoise,
   patterns,
   halftone,

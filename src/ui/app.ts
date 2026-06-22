@@ -33,7 +33,11 @@ export function mountApp(root: HTMLElement): void {
   canvasWrap.appendChild(canvas);
   win.appendChild(winbar);
   win.appendChild(canvasWrap);
-  stage.appendChild(win);
+  const stageInner = el("div", "stage-inner");
+  const dropHint = el("div", "drop-hint");
+  dropHint.textContent = "⤓  DROP YOUR IMAGE HERE  ·  PASTE  ·  OR “OPEN IMAGE”";
+  stageInner.append(win, dropHint);
+  stage.appendChild(stageInner);
 
   const side = el("aside", "sidebar");
 

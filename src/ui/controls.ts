@@ -1,6 +1,7 @@
 import type { ParamDef } from "../filters/types";
 import type { StackItem } from "../engine/pipeline";
 import { store } from "../state/store";
+import { getMask, loadMaskFile } from "../io/maskStore";
 
 // Builds one control row from a declarative ParamDef. This is why adding a filter needs
 // zero UI code: the control type is read straight off the param definition.
@@ -78,6 +79,26 @@ export function buildControl(item: StackItem, def: ParamDef): HTMLElement {
     input.addEventListener("input", () => store.setParam(item.uid, def.key, input.value));
     row.classList.add("ctl-text");
     row.appendChild(input);
+  } else if (def.type === "mask") {
+    row.classList.add("ctl-text");
+    const wrap = el("div", "mask-ctl");
+    const loaded = getMask(current as string);
+    const name = el("span", "mask-name");
+    name.textContent = loaded ? loaded.name : "built-in Bayer";
+    const load = document.createElement("button");
+    load.className = "btn mini";
+    load.textContent = "LOAD";
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = "image/*";
+    file.style.display = "none";
+    load.addEventListener("click", () => file.click());
+    file.addEventListener("change", async () => {
+      const f = file.files?.[0];
+      if (f) store.setParam(item.uid, def.key, await loadMaskFile(f));
+    });
+    wrap.append(name, load, file);
+    row.appendChild(wrap);
   }
   return row;
 }

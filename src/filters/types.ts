@@ -9,7 +9,7 @@
 // generic stays consistent across the whole pipeline regardless of how a buffer was made.
 export type Gray = Float32Array<ArrayBufferLike>;
 
-export type ParamType = "range" | "toggle" | "select" | "text";
+export type ParamType = "range" | "toggle" | "select" | "text" | "mask";
 
 export interface ParamDef {
   key: string;

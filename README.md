@@ -33,6 +33,7 @@ Black & white only, by design. The interface is grayscale with a single restrain
 | **Ostromoukhov** | Variable-coefficient error diffusion (SIGGRAPH 2001) — near blue-noise, artefact-free |
 | **Riemersma** | Error diffusion along a Hilbert curve — isotropic, scanline-free grain |
 | **Ordered (Bayer)** | 2/4/8 matrix screens — the structured paint-program look |
+| **Threshold Map** | Dither against any loaded image as a custom screen (or built-in Bayer) |
 | **Blue Noise** | Void-and-cluster FM screen — fine organic grain, no pattern |
 | **Patterns** | MacPaint-style 8×8 fill tiles, tone-mapped or single-tile |
 | **Halftone** | Rotated dot / square / line screen — offset print "trame" (SVG/PDF export) |

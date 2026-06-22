@@ -75,6 +75,19 @@ html, body {
   background-position: 0 0, 2px 2px;
 }
 .stage.dragging .window { outline: 3px solid var(--orange); outline-offset: 2px; }
+.stage-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drop-hint {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--gray-4);
+  background: var(--platinum-hi);
+  border: 1px dashed var(--gray-3);
+  border-radius: 9px;
+  padding: 5px 12px;
+}
+.stage.dragging .drop-hint { color: #fff; background: var(--orange); border-color: var(--ink); }
 
 /* ---- window chrome ---- */
 .window {
@@ -322,6 +335,10 @@ input[type="text"], select {
 select { cursor: pointer; }
 
 .empty { font-size: 11px; color: var(--gray-3); line-height: 1.5; margin: 4px 2px; }
+
+/* threshold-map mask loader control */
+.mask-ctl { display: flex; align-items: center; gap: 6px; width: 100%; }
+.mask-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--gray-4); }
 
 ::-webkit-scrollbar { width: 14px; height: 14px; }
 ::-webkit-scrollbar-thumb {
