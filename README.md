@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/mono-splash.png" alt="MONO° — 1-bit effect software" width="100%">
+  <img src="assets/mono-splash.jpg" alt="MONO° — 1-bit effect software" width="100%">
 </p>
 
 # MONO°
