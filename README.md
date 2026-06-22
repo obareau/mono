@@ -12,6 +12,8 @@ Black & white only, by design. The interface is grayscale with a single restrain
 
 ### ▶ [Try it live — obareau.github.io/mono](https://obareau.github.io/mono/)
 
+Installable as a PWA (works offline). Open the link and choose "Install" / "Add to Home Screen".
+
 ![status](https://img.shields.io/badge/status-alpha-ff5a00)
 
 <p align="center">
