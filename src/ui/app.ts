@@ -214,13 +214,7 @@ export function mountApp(root: HTMLElement): void {
       if (!item.enabled) card.classList.add("off");
       if (f.terminal) card.classList.add("terminal");
 
-      // drag-to-reorder
-      card.draggable = true;
-      card.addEventListener("dragstart", (e) => {
-        e.dataTransfer?.setData("text/plain", String(item.uid));
-        card.classList.add("dragging-card");
-      });
-      card.addEventListener("dragend", () => card.classList.remove("dragging-card"));
+      // drag-to-reorder by the title bar only (so body sliders stay interactive)
       card.addEventListener("dragover", (e) => {
         e.preventDefault();
         card.classList.add("drop-target");
@@ -234,6 +228,12 @@ export function mountApp(root: HTMLElement): void {
       });
 
       const bar = el("div", "fcard-bar");
+      bar.draggable = true;
+      bar.addEventListener("dragstart", (e) => {
+        e.dataTransfer?.setData("text/plain", String(item.uid));
+        card.classList.add("dragging-card");
+      });
+      bar.addEventListener("dragend", () => card.classList.remove("dragging-card"));
       const title = el("span", "fcard-title");
       title.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
       bar.appendChild(title);
