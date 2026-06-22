@@ -12,6 +12,7 @@ import { patterns } from "./patterns";
 import { halftone } from "./halftone";
 import { clusteredDot } from "./clusteredDot";
 import { hatch } from "./hatch";
+import { GEOMETRY } from "./geometry";
 import { DISRUPTORS } from "./disruptors";
 import { offset } from "./offset";
 import { ascii } from "./ascii";
@@ -32,6 +33,7 @@ export const FILTERS: Filter[] = [
   halftone,
   clusteredDot,
   hatch,
+  ...GEOMETRY,
   ...DISRUPTORS,
   offset,
   ascii,
