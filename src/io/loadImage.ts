@@ -1,8 +1,12 @@
-// Decode an image file into a grayscale Float32Array (Rec. 601 luma), downscaled so the
-// long edge fits `maxDim` — keeps live processing responsive. Returns buffer + dimensions.
+// Decode an image file into a default grayscale buffer (Rec. 601 luma) plus the separate
+// R/G/B planes (0..1), downscaled so the long edge fits `maxDim`. The colour planes let
+// photographic colour filters re-derive the grayscale with custom channel weights.
 
 export interface SourceImage {
   gray: Float32Array;
+  r: Float32Array;
+  g: Float32Array;
+  b: Float32Array;
   w: number;
   h: number;
 }
@@ -26,10 +30,19 @@ export function fromBitmap(bitmap: ImageBitmap | HTMLImageElement, maxDim: numbe
   ctx.drawImage(bitmap as CanvasImageSource, 0, 0, w, h);
   const data = ctx.getImageData(0, 0, w, h).data;
 
-  const gray = new Float32Array(w * h);
+  const n = w * h;
+  const gray = new Float32Array(n);
+  const r = new Float32Array(n);
+  const g = new Float32Array(n);
+  const b = new Float32Array(n);
   for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-    // Rec. 601 luma, normalized to 0..1
-    gray[j] = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+    const rr = data[i] / 255;
+    const gg = data[i + 1] / 255;
+    const bb = data[i + 2] / 255;
+    r[j] = rr;
+    g[j] = gg;
+    b[j] = bb;
+    gray[j] = 0.299 * rr + 0.587 * gg + 0.114 * bb; // Rec. 601 luma default
   }
-  return { gray, w, h };
+  return { gray, r, g, b, w, h };
 }

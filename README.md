@@ -12,9 +12,11 @@ Black & white only, by design. The interface is grayscale with a single restrain
 
 | Filter | What it does |
 |--------|--------------|
+| **Color Filter** | B&W photographic filters (red/orange/yellow/green/blue) — re-derives gray from source RGB, like coloured glass on the lens |
 | **Tone** | Brightness / contrast / gamma / invert — prep before screening |
 | **Threshold** | Hard 1-bit cut |
 | **Error Diffusion** | Floyd-Steinberg, Atkinson, Jarvis-Judice-Ninke, Stucki, Burkes, Sierra, Sierra Lite, Stevenson-Arce — serpentine scan |
+| **Ostromoukhov** | Variable-coefficient error diffusion (SIGGRAPH 2001) — near blue-noise, artefact-free |
 | **Riemersma** | Error diffusion along a Hilbert curve — isotropic, scanline-free grain |
 | **Ordered (Bayer)** | 2/4/8 matrix screens — the structured paint-program look |
 | **Blue Noise** | Void-and-cluster FM screen — fine organic grain, no pattern |

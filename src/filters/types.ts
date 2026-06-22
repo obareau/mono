@@ -26,7 +26,7 @@ export interface ParamDef {
 
 export type ParamValues = Record<string, number | boolean | string>;
 
-export type FilterCategory = "tone" | "dither" | "screen" | "offset" | "ascii";
+export type FilterCategory = "color" | "tone" | "dither" | "screen" | "offset" | "ascii";
 
 // Output of a terminal filter: it draws straight onto the output canvas.
 export interface TerminalRender {
@@ -43,6 +43,9 @@ export interface Filter {
   params: ParamDef[];
   /** True for filters that produce their own rendering instead of a pixel buffer. */
   terminal?: boolean;
+  /** Source conversion. Builds the grayscale buffer from the original RGB planes (0..1).
+   *  Used by photographic colour filters; always reads the unmodified source RGB. */
+  fromRGB?(r: Gray, g: Gray, b: Gray, w: number, h: number, p: ParamValues): Gray;
   /** Buffer transform. Receives & returns a grayscale buffer (values 0..1). */
   apply?(gray: Gray, w: number, h: number, p: ParamValues): Gray;
   /** Terminal render. Receives the grayscale buffer produced by upstream filters. */

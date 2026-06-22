@@ -90,7 +90,7 @@ export function mountApp(root: HTMLElement): void {
       ctx.fillText("DROP · PASTE · OPEN AN IMAGE", 320, 200);
       return;
     }
-    const result = runPipeline(store.source.gray, store.source.w, store.source.h, store.stack);
+    const result = runPipeline(store.source, store.stack);
     lastResult = result;
     exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
     renderToCanvas(canvas, result);

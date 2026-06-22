@@ -1,4 +1,5 @@
 import type { Filter } from "./types";
+import { photoFilter } from "./photoFilter";
 import { tone } from "./tone";
 import { threshold } from "./threshold";
 import { errorDiffusion } from "./floydSteinberg";
@@ -16,6 +17,7 @@ import { ascii } from "./ascii";
 // Single source of truth. Add a filter here and it appears in the UI automatically —
 // controls are generated from each filter's `params` declaration.
 export const FILTERS: Filter[] = [
+  photoFilter,
   tone,
   threshold,
   errorDiffusion,
