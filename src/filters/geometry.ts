@@ -187,4 +187,45 @@ const tessellate: Filter = {
   },
 };
 
-export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate];
+// VORONOI — jittered seed points; each pixel joins its nearest seed's cell, flat-filled
+// with that cell's mean tone. Irregular, crystalline mosaic (vs the regular hex tiling).
+const voronoi: Filter = {
+  id: "voronoi",
+  name: "Voronoi",
+  category: "geometry",
+  params: [
+    { key: "spacing", label: "Spacing", type: "range", default: 18, min: 4, max: 80, step: 1 },
+    { key: "jitter", label: "Jitter", type: "range", default: 0.8, min: 0, max: 1, step: 0.01 },
+    { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
+  ],
+  apply(gray, w, h, p) {
+    const s = Math.max(2, Math.round(p.spacing as number));
+    const jit = (p.jitter as number) * s;
+    const seed = p.seed as number;
+    const cols = Math.ceil(w / s) + 2;
+    const rows = Math.ceil(h / s) + 2;
+    const sxOf = (gx: number, gy: number) => (gx + 0.5) * s + jitter(gx, gy, seed) * jit;
+    const syOf = (gx: number, gy: number) => (gy + 0.5) * s + jitter(gx + 37, gy + 11, seed) * jit;
+    const nearest = (x: number, y: number): number => {
+      const gx0 = Math.floor(x / s), gy0 = Math.floor(y / s);
+      let best = 0, bd = Infinity;
+      for (let gy = gy0 - 1; gy <= gy0 + 1; gy++) {
+        for (let gx = gx0 - 1; gx <= gx0 + 1; gx++) {
+          if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
+          const dx = x - sxOf(gx, gy), dy = y - syOf(gx, gy);
+          const d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; best = gy * cols + gx; }
+        }
+      }
+      return best;
+    };
+    const sums = new Float64Array(cols * rows);
+    const counts = new Uint32Array(cols * rows);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const id = nearest(x, y); sums[id] += gray[y * w + x]; counts[id]++; }
+    const out = new Float32Array(gray.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const id = nearest(x, y); out[y * w + x] = counts[id] ? sums[id] / counts[id] : gray[y * w + x]; }
+    return out;
+  },
+};
+
+export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate, voronoi];

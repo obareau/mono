@@ -13,6 +13,7 @@ import { halftone } from "./halftone";
 import { clusteredDot } from "./clusteredDot";
 import { stipple } from "./stipple";
 import { hatch } from "./hatch";
+import { contour } from "./contour";
 import { GEOMETRY } from "./geometry";
 import { DISRUPTORS } from "./disruptors";
 import { offset } from "./offset";
@@ -35,6 +36,7 @@ export const FILTERS: Filter[] = [
   clusteredDot,
   stipple,
   hatch,
+  contour,
   ...GEOMETRY,
   ...DISRUPTORS,
   offset,
