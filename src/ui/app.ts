@@ -3,8 +3,9 @@ import { FILTERS, getFilter } from "../filters/registry";
 import { runPipeline } from "../engine/pipeline";
 import { renderToCanvas, exportPNG, exportText } from "../io/render";
 import { encodeGIF, downloadBlob, type GifFrame } from "../io/gif";
+import { shareURL } from "../io/presets";
 import type { PipelineResult } from "../engine/pipeline";
-import { loadImageFile } from "../io/loadImage";
+import { loadImageFile, fromBitmap } from "../io/loadImage";
 import { buildControl, el } from "./controls";
 
 // Renders the whole interface and keeps the canvas in sync with the store.
@@ -52,7 +53,27 @@ export function mountApp(root: HTMLElement): void {
 
   let lastResult: PipelineResult | null = null;
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
-  const exportBtn = btn("EXPORT PNG", "", () => exportPNG(canvas, "mono.png"));
+  const exportBtn = btn("EXPORT PNG", "", () => exportPNGFull());
+
+  // Re-run the stack at the source's native resolution (capped) for a print-quality PNG.
+  const EXPORT_MAX = 4096;
+  async function exportPNGFull() {
+    const src = store.source;
+    if (!src) return;
+    if (!src.bitmap) {
+      exportPNG(canvas, "mono.png"); // no original kept (shouldn't happen) — fall back to preview
+      return;
+    }
+    exportBtn.textContent = "RENDERING…";
+    await new Promise((r) => setTimeout(r, 0));
+    const max = Math.min(EXPORT_MAX, Math.max(src.natW, src.natH));
+    const hi = fromBitmap(src.bitmap, max);
+    const result = runPipeline(hi, store.stack, { time: animTime, frame: Math.round(animTime * store.fps) });
+    const off = document.createElement("canvas");
+    renderToCanvas(off, result);
+    exportPNG(off, "mono.png");
+    exportBtn.textContent = "EXPORT PNG";
+  }
   const exportTxtBtn = btn("EXPORT TXT", "", () => {
     const t = lastResult?.terminal?.text?.();
     if (t) exportText(t, "mono.txt");
@@ -60,7 +81,18 @@ export function mountApp(root: HTMLElement): void {
   exportTxtBtn.style.display = "none"; // only when an ASCII (text) result is active
   const playBtn = btn("▶ PLAY", "", () => store.setPlaying(!store.playing));
   const gifBtn = btn("EXPORT GIF", "", () => exportGIF());
-  headerRight.append(openBtn, playBtn, exportTxtBtn, gifBtn, exportBtn);
+  const shareBtn = btn("COPY LINK", "", async () => {
+    const url = shareURL(store.serialize());
+    history.replaceState(null, "", url);
+    try {
+      await navigator.clipboard.writeText(url);
+      shareBtn.textContent = "COPIED ✓";
+      setTimeout(() => (shareBtn.textContent = "COPY LINK"), 1200);
+    } catch {
+      shareBtn.textContent = "COPY LINK";
+    }
+  });
+  headerRight.append(openBtn, playBtn, shareBtn, exportTxtBtn, gifBtn, exportBtn);
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {

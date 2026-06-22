@@ -9,6 +9,10 @@ export interface SourceImage {
   b: Float32Array;
   w: number;
   h: number;
+  /** Original decoded image, kept so export can re-run the stack at full resolution. */
+  bitmap?: ImageBitmap;
+  natW: number;
+  natH: number;
 }
 
 export async function loadImageFile(file: File, maxDim = 1024): Promise<SourceImage> {
@@ -44,5 +48,7 @@ export function fromBitmap(bitmap: ImageBitmap | HTMLImageElement, maxDim: numbe
     b[j] = bb;
     gray[j] = 0.299 * rr + 0.587 * gg + 0.114 * bb; // Rec. 601 luma default
   }
-  return { gray, r, g, b, w, h };
+  const out: SourceImage = { gray, r, g, b, w, h, natW: iw, natH: ih };
+  if ("close" in bitmap) out.bitmap = bitmap as ImageBitmap;
+  return out;
 }

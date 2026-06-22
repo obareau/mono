@@ -1,7 +1,7 @@
 import type { StackItem } from "../engine/pipeline";
 import type { SourceImage } from "../io/loadImage";
 import { getFilter } from "../filters/registry";
-import { defaultParams } from "../filters/types";
+import { defaultParams, type ParamValues } from "../filters/types";
 
 // Minimal observable store. UI subscribes; any mutation re-runs the pipeline + render.
 type Listener = () => void;
@@ -84,6 +84,24 @@ class Store {
 
   clear() {
     this.stack = [];
+    this.emit();
+  }
+
+  /** Serialize the stack for presets (no uids). */
+  serialize() {
+    return this.stack.map((s) => ({ filterId: s.filterId, params: { ...s.params }, enabled: s.enabled }));
+  }
+
+  /** Replace the stack from a preset, dropping unknown filters and merging params with defaults. */
+  setStack(items: { filterId: string; params: ParamValues; enabled: boolean }[]) {
+    this.stack = [];
+    for (const it of items) {
+      const f = getFilter(it.filterId);
+      if (!f) continue;
+      const params = defaultParams(f);
+      for (const d of f.params) if (it.params[d.key] !== undefined) params[d.key] = it.params[d.key];
+      this.stack.push({ uid: uidCounter++, filterId: it.filterId, params, enabled: it.enabled !== false });
+    }
     this.emit();
   }
 }

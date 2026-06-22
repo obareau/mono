@@ -7,12 +7,10 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 
 - [x] **Live deploy (GitHub Pages).** CI Action builds and publishes `dist/` on every push
       to main. Live at <https://obareau.github.io/mono/>, linked at the top of the README.
-- [ ] **Full-resolution export.** Decouple the preview (downscaled to 1024px for speed)
-      from export — re-run the stack at the source's native resolution for PNG. Required
-      for print / zines / riso.
-- [ ] **Stack presets (save / load / share).** Serialize the filter stack to JSON;
-      persist in localStorage and encode into a shareable URL. Makes a composition
-      reproducible and postable.
+- [x] **Full-resolution export.** Preview stays at 1024px; EXPORT PNG re-runs the stack at
+      the source's native resolution (capped at 4096) from the kept original bitmap.
+- [x] **Stack presets (save / load / share).** Stack autosaves to localStorage and can be
+      shared via a `#s=` URL hash (COPY LINK button); shared links restore on load.
 
 ## Tier 2 — deepen the engine
 
