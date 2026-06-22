@@ -10,6 +10,8 @@ pure MacPaint aesthetic.
 
 Black & white only, by design. The interface is grayscale with a single restrained orange accent.
 
+### ▶ [Try it live — obareau.github.io/mono](https://obareau.github.io/mono/)
+
 ![status](https://img.shields.io/badge/status-alpha-ff5a00)
 
 <p align="center">

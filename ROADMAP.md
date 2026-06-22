@@ -5,9 +5,8 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 
 ## Tier 1 — ship soon, highest leverage
 
-- [ ] **Live deploy (GitHub Pages).** `base: "./"` is already set; add a CI Action that
-      builds and publishes `dist/`. Put the live link at the top of the README so the
-      screenshots become "try it now."
+- [x] **Live deploy (GitHub Pages).** CI Action builds and publishes `dist/` on every push
+      to main. Live at <https://obareau.github.io/mono/>, linked at the top of the README.
 - [ ] **Full-resolution export.** Decouple the preview (downscaled to 1024px for speed)
       from export — re-run the stack at the source's native resolution for PNG. Required
       for print / zines / riso.
