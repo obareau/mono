@@ -11,10 +11,6 @@ let uidCounter = 1;
 class Store {
   source: SourceImage | null = null;
   stack: StackItem[] = [];
-  // animation
-  playing = false;
-  duration = 3; // loop length in seconds (for GIF export)
-  fps = 12;
   private listeners = new Set<Listener>(); // structural changes -> rebuild sidebar
   private renderListeners = new Set<Listener>(); // value changes -> redraw only
 
@@ -39,15 +35,6 @@ class Store {
   setSource(img: SourceImage) {
     this.source = img;
     this.emit();
-  }
-
-  setPlaying(v: boolean) {
-    this.playing = v;
-    this.emit();
-  }
-  setAnim(key: "duration" | "fps", value: number) {
-    this[key] = value;
-    this.emitRender();
   }
 
   addFilter(filterId: string) {

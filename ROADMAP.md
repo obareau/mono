@@ -12,20 +12,10 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [x] **Stack presets (save / load / share).** Stack autosaves to localStorage and can be
       shared via a `#s=` URL hash (COPY LINK button); shared links restore on load.
 
-## Tier 2 — deepen the engine
+## Tier 2 — print-grade output
 
 - [ ] **Vector export (SVG / PDF)** for Halftone, Clustered Dot, Hatch, and stippling —
-      crisp screens at any print size.
-- [ ] **Performance: WebGL2 + Web Workers.** Port the per-pixel filters to fragment
-      shaders (real-time at full res); move error diffusion and blue-noise generation to a
-      worker. Unlocks smooth animated playback even with a deep stack.
-- [ ] **Video export (WebM)** alongside GIF — lighter and smoother.
-
-## Tier 3 — animated pipeline, deeper
-
-- [ ] **Inter-frame feedback buffer** in the animated pipeline → re-enables the four
-      disruptors that couldn't be ported as stills: Datamosh, Frame Hold, Sync Lost,
-      Signal Loss.
+      crisp screens at any print size. The headline Tier 2 feature.
 
 ## Ongoing — filters
 
@@ -35,9 +25,16 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [ ] Custom **threshold-map** dithering (use any image as the dither mask)
 - [ ] ASCII export to coloured HTML
 
-## Parked — not planned
+## Scope — MONO° is a still-image tool
 
-- **Live audio-reactive mode** (Web Audio / mic driving filter params). Considered as a
-  bridge to [terminal-synth](https://github.com/obareau/terminal-synth) but deliberately
-  dropped: not enough value for MONO°'s still/animated-render focus. The disruptors port
-  already carries the shared visual language. Revisit only if a clear use case appears.
+Motion belongs in the companion VJ tool
+[terminal-synth](https://github.com/obareau/terminal-synth), which imports photos, videos and
+GIFs and shares the same disruptor vocabulary. So the following are **not planned here**:
+
+- **Animation / Play mode, GIF & video (WebM) export.** Removed — drifts from MONO°'s focus.
+- **WebGL2 shader rewrite.** The CPU pipeline is fast enough (1024px live preview, full-res
+  export). Not worth rewriting ~24 working filters as shaders. If real lag ever appears,
+  move the pipeline into a Web Worker instead (far cheaper).
+- **Inter-frame feedback disruptors** (Datamosh, Frame Hold, Sync Lost, Signal Loss) — needs
+  motion; lives in terminal-synth.
+- **Live audio-reactive mode** — no value for a still-image tool.

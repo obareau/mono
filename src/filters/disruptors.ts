@@ -29,12 +29,11 @@ const blockDisplace: Filter = {
     { key: "amount", label: "Amount", type: "range", default: 0.5, min: 0, max: 1, step: 0.01 },
     { key: "cell", label: "Cell px", type: "range", default: 24, min: 4, max: 96, step: 1 },
     { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
-    { key: "speed", label: "Speed", type: "range", default: 0, min: 0, max: 30, step: 0.5 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const a = p.amount as number;
     const cell = p.cell as number;
-    const seed = (p.seed as number) + Math.floor(ctx.time * (p.speed as number));
+    const seed = p.seed as number;
     const out = new Float32Array(gray.length);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -85,14 +84,13 @@ const glyphStorm: Filter = {
     { key: "columns", label: "Columns", type: "range", default: 80, min: 20, max: 200, step: 1 },
     { key: "density", label: "Density", type: "range", default: 0.22, min: 0, max: 1, step: 0.01 },
     { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
-    { key: "speed", label: "Speed", type: "range", default: 0, min: 0, max: 30, step: 0.5 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const a = p.amount as number;
     const cols = Math.round(p.columns as number);
     const rows = Math.max(1, Math.round((cols * h) / w));
     const thresh = 1 - (p.density as number);
-    const seed = (p.seed as number) + Math.floor(ctx.time * (p.speed as number));
+    const seed = p.seed as number;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const gx = (x / w) * cols;
@@ -121,12 +119,11 @@ const scanlines: Filter = {
     { key: "amount", label: "Amount", type: "range", default: 0.6, min: 0, max: 1, step: 0.01 },
     { key: "density", label: "Lines", type: "range", default: 300, min: 40, max: 900, step: 1 },
     { key: "phase", label: "Phase", type: "range", default: 0, min: 0, max: 6.28, step: 0.01 },
-    { key: "speed", label: "Speed", type: "range", default: 0, min: 0, max: 20, step: 0.1 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const a = p.amount as number;
     const density = p.density as number;
-    const phase = (p.phase as number) + ctx.time * (p.speed as number);
+    const phase = p.phase as number;
     for (let y = 0; y < h; y++) {
       const scan = 0.5 + 0.5 * Math.sin((y / h) * density + phase);
       const k = 1 + (scan - 1) * a * 0.85;
@@ -175,13 +172,12 @@ const scanTear: Filter = {
     { key: "bands", label: "Bands", type: "range", default: 40, min: 4, max: 160, step: 1 },
     { key: "threshold", label: "Threshold", type: "range", default: 0.78, min: 0, max: 1, step: 0.01 },
     { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
-    { key: "speed", label: "Speed", type: "range", default: 0, min: 0, max: 30, step: 0.5 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const a = p.amount as number;
     const bands = p.bands as number;
     const thr = p.threshold as number;
-    const seed = (p.seed as number) + Math.floor(ctx.time * (p.speed as number));
+    const seed = p.seed as number;
     const out = new Float32Array(gray.length);
     for (let y = 0; y < h; y++) {
       const band = Math.floor((y / h) * bands);

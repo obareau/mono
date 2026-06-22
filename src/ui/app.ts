@@ -2,7 +2,6 @@ import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
 import { runPipeline } from "../engine/pipeline";
 import { renderToCanvas, exportPNG, exportText } from "../io/render";
-import { encodeGIF, downloadBlob, type GifFrame } from "../io/gif";
 import { shareURL } from "../io/presets";
 import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile, fromBitmap } from "../io/loadImage";
@@ -68,7 +67,7 @@ export function mountApp(root: HTMLElement): void {
     await new Promise((r) => setTimeout(r, 0));
     const max = Math.min(EXPORT_MAX, Math.max(src.natW, src.natH));
     const hi = fromBitmap(src.bitmap, max);
-    const result = runPipeline(hi, store.stack, { time: animTime, frame: Math.round(animTime * store.fps) });
+    const result = runPipeline(hi, store.stack);
     const off = document.createElement("canvas");
     renderToCanvas(off, result);
     exportPNG(off, "mono.png");
@@ -79,8 +78,6 @@ export function mountApp(root: HTMLElement): void {
     if (t) exportText(t, "mono.txt");
   });
   exportTxtBtn.style.display = "none"; // only when an ASCII (text) result is active
-  const playBtn = btn("▶ PLAY", "", () => store.setPlaying(!store.playing));
-  const gifBtn = btn("EXPORT GIF", "", () => exportGIF());
   const shareBtn = btn("COPY LINK", "", async () => {
     const url = shareURL(store.serialize());
     history.replaceState(null, "", url);
@@ -92,7 +89,7 @@ export function mountApp(root: HTMLElement): void {
       shareBtn.textContent = "COPY LINK";
     }
   });
-  headerRight.append(openBtn, playBtn, shareBtn, exportTxtBtn, gifBtn, exportBtn);
+  headerRight.append(openBtn, shareBtn, exportTxtBtn, exportBtn);
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {
@@ -111,8 +108,8 @@ export function mountApp(root: HTMLElement): void {
     if (f) store.setSource(await loadImageFile(f));
   });
 
-  // ---- render loop ----
-  function redraw(time = animTime) {
+  // ---- render ----
+  function redraw() {
     if (!store.source) {
       canvas.width = 640;
       canvas.height = 400;
@@ -125,65 +122,10 @@ export function mountApp(root: HTMLElement): void {
       ctx.fillText("DROP · PASTE · OPEN AN IMAGE", 320, 200);
       return;
     }
-    const result = runPipeline(store.source, store.stack, { time, frame: Math.round(time * store.fps) });
+    const result = runPipeline(store.source, store.stack);
     lastResult = result;
     exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
     renderToCanvas(canvas, result);
-  }
-
-  // ---- animation clock (RAF) ----
-  let animTime = 0;
-  let rafId = 0;
-  let startMs = 0;
-  function tick(now: number) {
-    if (!store.playing) return;
-    if (!startMs) startMs = now;
-    animTime = ((now - startMs) / 1000) % store.duration; // loop over the export duration
-    redraw(animTime);
-    rafId = requestAnimationFrame(tick);
-  }
-  function syncPlayback() {
-    playBtn.textContent = store.playing ? "❚❚ PAUSE" : "▶ PLAY";
-    if (store.playing && !rafId) {
-      startMs = 0;
-      rafId = requestAnimationFrame(tick);
-    } else if (!store.playing && rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = 0;
-      animTime = 0;
-      redraw(0);
-    }
-  }
-
-  // ---- GIF export: render the loop frame by frame ----
-  async function exportGIF() {
-    if (!store.source) return;
-    const wasPlaying = store.playing;
-    if (wasPlaying) store.setPlaying(false);
-    const fps = store.fps;
-    const count = Math.max(1, Math.round(store.duration * fps));
-    const delayCs = Math.round(100 / fps);
-    const off = document.createElement("canvas");
-    const frames: GifFrame[] = [];
-    let gw = 0;
-    let gh = 0;
-    gifBtn.textContent = "RENDERING…";
-    await new Promise((r) => setTimeout(r, 0));
-    for (let f = 0; f < count; f++) {
-      const t = (f / fps) % store.duration;
-      const result = runPipeline(store.source, store.stack, { time: t, frame: f });
-      renderToCanvas(off, result);
-      gw = off.width;
-      gh = off.height;
-      const data = off.getContext("2d")!.getImageData(0, 0, gw, gh).data;
-      const indices = new Uint8Array(gw * gh);
-      for (let i = 0, j = 0; i < data.length; i += 4, j++) indices[j] = data[i]; // R=G=B (grey)
-      frames.push({ indices, delayCs });
-    }
-    const blob = encodeGIF(frames, gw, gh);
-    downloadBlob(blob, "mono.gif");
-    gifBtn.textContent = "EXPORT GIF";
-    if (wasPlaying) store.setPlaying(true);
   }
 
   function renderSidebar() {
@@ -200,16 +142,6 @@ export function mountApp(root: HTMLElement): void {
     }
     palette.appendChild(grid);
     side.appendChild(palette);
-
-    // animation panel
-    const anim = el("section", "panel");
-    anim.appendChild(heading("ANIMATION"));
-    anim.appendChild(animRow("Duration (s)", store.duration, 0.5, 20, 0.5, (v) => store.setAnim("duration", v)));
-    anim.appendChild(animRow("FPS", store.fps, 2, 30, 1, (v) => store.setAnim("fps", v)));
-    const hint = el("p", "empty");
-    hint.textContent = "Give Disruptors a Speed > 0, then Play / Export GIF.";
-    anim.appendChild(hint);
-    side.appendChild(anim);
 
     // active stack
     const stackPanel = el("section", "panel");
@@ -258,12 +190,9 @@ export function mountApp(root: HTMLElement): void {
 
   store.subscribe(() => {
     renderSidebar();
-    syncPlayback();
-    if (!store.playing) redraw();
+    redraw();
   });
-  store.subscribeRender(() => {
-    if (!store.playing) redraw();
-  });
+  store.subscribeRender(() => redraw());
 
   renderSidebar();
   redraw();
@@ -284,26 +213,6 @@ function iconBtn(glyph: string, title: string, onClick: () => void): HTMLButtonE
   b.title = title;
   b.addEventListener("click", onClick);
   return b;
-}
-
-function animRow(label: string, value: number, min: number, max: number, step: number, onChange: (v: number) => void): HTMLElement {
-  const row = el("label", "ctl");
-  const name = el("span", "ctl-label");
-  name.textContent = label;
-  const input = document.createElement("input");
-  input.type = "range";
-  input.min = String(min);
-  input.max = String(max);
-  input.step = String(step);
-  input.value = String(value);
-  const val = el("span", "ctl-val");
-  val.textContent = String(value);
-  input.addEventListener("input", () => {
-    val.textContent = input.value;
-    onChange(parseFloat(input.value));
-  });
-  row.append(name, input, val);
-  return row;
 }
 
 function heading(text: string): HTMLElement {

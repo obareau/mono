@@ -1,4 +1,4 @@
-import type { FrameContext, Gray, ParamValues, TerminalRender } from "../filters/types";
+import type { Gray, ParamValues, TerminalRender } from "../filters/types";
 import type { SourceImage } from "../io/loadImage";
 import { getFilter } from "../filters/registry";
 
@@ -19,11 +19,7 @@ export interface PipelineResult {
 // Runs the stack top-to-bottom over a copy of the source buffer.
 // A colour filter re-derives the grayscale from the source RGB; a terminal filter (ASCII)
 // ends the buffer chain and provides its own renderer.
-export function runPipeline(
-  source: SourceImage,
-  stack: StackItem[],
-  ctx: FrameContext = { time: 0, frame: 0 },
-): PipelineResult {
+export function runPipeline(source: SourceImage, stack: StackItem[]): PipelineResult {
   const { w, h } = source;
   let gray: Gray = new Float32Array(source.gray);
   for (const item of stack) {
@@ -38,7 +34,7 @@ export function runPipeline(
       return { gray, w, h, terminal: filter.render(gray, w, h, item.params) };
     }
     if (filter.apply) {
-      gray = filter.apply(gray, w, h, item.params, ctx);
+      gray = filter.apply(gray, w, h, item.params);
     }
   }
   return { gray, w, h };

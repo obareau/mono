@@ -142,7 +142,7 @@ const highpass: Filter = {
   },
 };
 
-// FLANGER — single modulated delay -> sweeping comb. The sweep moves with the clock.
+// FLANGER — a delay modulated across the image gives a sweeping comb pattern.
 const flanger: Filter = {
   id: "flanger",
   name: "Flanger",
@@ -151,14 +151,14 @@ const flanger: Filter = {
     { key: "delay", label: "Delay px", type: "range", default: 8, min: 1, max: 60, step: 1 },
     { key: "depth", label: "Depth", type: "range", default: 6, min: 0, max: 40, step: 1 },
     { key: "freq", label: "Freq", type: "range", default: 3, min: 0.2, max: 12, step: 0.1 },
-    { key: "rate", label: "Rate", type: "range", default: 0, min: 0, max: 10, step: 0.1 },
+    { key: "phase", label: "Phase", type: "range", default: 0, min: 0, max: 6.28, step: 0.01 },
     { key: "mix", label: "Mix", type: "range", default: 0.5, min: 0, max: 1, step: 0.01 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const base = p.delay as number;
     const depth = p.depth as number;
     const freq = p.freq as number;
-    const phase = ctx.time * (p.rate as number);
+    const phase = p.phase as number;
     const mix = p.mix as number;
     const out = new Float32Array(gray.length);
     for (let y = 0; y < h; y++) {
@@ -179,14 +179,14 @@ const chorus: Filter = {
     { key: "delay", label: "Delay px", type: "range", default: 14, min: 2, max: 80, step: 1 },
     { key: "depth", label: "Depth", type: "range", default: 8, min: 0, max: 40, step: 1 },
     { key: "voices", label: "Voices", type: "range", default: 3, min: 1, max: 5, step: 1 },
-    { key: "rate", label: "Rate", type: "range", default: 0, min: 0, max: 8, step: 0.1 },
+    { key: "phase", label: "Phase", type: "range", default: 0, min: 0, max: 6.28, step: 0.01 },
     { key: "mix", label: "Mix", type: "range", default: 0.6, min: 0, max: 1, step: 0.01 },
   ],
-  apply(gray, w, h, p, ctx) {
+  apply(gray, w, h, p) {
     const base = p.delay as number;
     const depth = p.depth as number;
     const voices = Math.max(1, Math.round(p.voices as number));
-    const t = ctx.time * (p.rate as number);
+    const t = p.phase as number;
     const mix = p.mix as number;
     const out = new Float32Array(gray.length);
     for (let y = 0; y < h; y++) {
