@@ -2,7 +2,7 @@ import type { Filter, TerminalRender } from "./types";
 
 // ASCII art (terminal filter). The image is reduced to a grid of cells; each cell's
 // brightness picks a glyph from a user-supplied ramp string. The ramp IS the medium —
-// type "MONOLAB" or "@%#*+=-:. " or anything; characters are ordered dark -> light by default.
+// type "MONO" or "@%#*+=-:. " or anything; characters are ordered dark -> light by default.
 
 const CHAR_ASPECT = 0.6; // monospace advance width / line height
 

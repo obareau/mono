@@ -1,7 +1,7 @@
 {
-  "name": "mono-lab",
+  "name": "mono",
   "version": "0.1.0",
-  "description": "Industrial 1-bit black & white image lab — halftone, Floyd-Steinberg, offset, ASCII. Inspired by MacPaint.",
+  "description": "MONO° — industrial 1-bit black & white image workbench. Halftone, Floyd-Steinberg, offset, custom-ramp ASCII. Inspired by MacPaint.",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -11,7 +11,7 @@ export function mountApp(root: HTMLElement): void {
 
   // ---- layout ----
   const header = el("header", "topbar");
-  header.innerHTML = `<span class="logo">MONO<b>LAB</b></span><span class="tag">1-BIT IMAGE WORKBENCH</span>`;
+  header.innerHTML = `<span class="logo">MONO<b>°</b></span><span class="tag">1-BIT IMAGE WORKBENCH</span>`;
   const headerRight = el("div", "topbar-right");
   header.appendChild(headerRight);
 
@@ -42,7 +42,7 @@ export function mountApp(root: HTMLElement): void {
   root.appendChild(fileInput);
 
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
-  const exportBtn = btn("EXPORT PNG", "", () => exportPNG(canvas, "mono-lab.png"));
+  const exportBtn = btn("EXPORT PNG", "", () => exportPNG(canvas, "mono.png"));
   headerRight.append(openBtn, exportBtn);
 
   // drag & drop + paste

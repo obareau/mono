@@ -28,7 +28,7 @@ export function renderToCanvas(canvas: HTMLCanvasElement, result: PipelineResult
   ctx.putImageData(img, 0, 0);
 }
 
-export function exportPNG(canvas: HTMLCanvasElement, name = "mono-lab.png"): void {
+export function exportPNG(canvas: HTMLCanvasElement, name = "mono.png"): void {
   canvas.toBlob((blob) => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);

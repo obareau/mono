@@ -1,4 +1,4 @@
-# MONO LAB
+# MONO°
 
 **An industrial 1-bit black & white image workbench.** Drop in a photo, stack screens and
 dithers, and pull out crisp monochrome art. Built for zines, risograph/offset prep, and the
