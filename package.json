@@ -1,0 +1,16 @@
+{
+  "name": "mono-lab",
+  "version": "0.1.0",
+  "description": "Industrial 1-bit black & white image lab — halftone, Floyd-Steinberg, offset, ASCII. Inspired by MacPaint.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "license": "MIT"
+}
