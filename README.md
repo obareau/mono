@@ -64,11 +64,8 @@ error-diffusion is intentionally CPU/sequential, screens are per-pixel and GPU-r
 
 ## Roadmap
 
-- [ ] GPU (WebGL2) path for per-pixel screens — real-time at full res
-- [ ] SVG / PDF vector export for halftone & stipple
-- [ ] Interactive filters (pointer + device tilt)
-- [ ] More dither kernels (Stucki, Sierra, Burkes) and classic Mac pattern fills
-- [ ] Filter-stack presets
+See [ROADMAP.md](./ROADMAP.md). Near-term: live deploy, full-resolution export, and
+shareable stack presets; then vector (SVG/PDF) export and a WebGL2/worker performance pass.
 
 ## License
 
