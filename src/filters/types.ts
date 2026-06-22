@@ -20,6 +20,8 @@ export interface ParamDef {
   max?: number;
   step?: number;
   options?: string[];
+  /** Anchored marks shown under a range slider (e.g. [80, 120] columns). */
+  ticks?: number[];
 }
 
 export type ParamValues = Record<string, number | boolean | string>;
@@ -30,6 +32,8 @@ export type FilterCategory = "tone" | "dither" | "screen" | "offset" | "ascii";
 export interface TerminalRender {
   /** Renders into the given 2D context sized to (outW, outH) device pixels. */
   draw(ctx: CanvasRenderingContext2D, outW: number, outH: number): void;
+  /** Plain-text representation, if the filter has one (ASCII). Enables .txt export. */
+  text?(): string;
 }
 
 export interface Filter {

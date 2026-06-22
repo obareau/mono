@@ -6,31 +6,43 @@ import type { Filter } from "./types";
 
 type Kernel = { dx: number; dy: number; w: number }[];
 
-const FLOYD: Kernel = [
-  { dx: 1, dy: 0, w: 7 / 16 },
-  { dx: -1, dy: 1, w: 3 / 16 },
-  { dx: 0, dy: 1, w: 5 / 16 },
-  { dx: 1, dy: 1, w: 1 / 16 },
-];
+// Build a kernel from compact [dx, dy, weight] tuples with a shared divisor.
+function k(divisor: number, cells: [number, number, number][]): Kernel {
+  return cells.map(([dx, dy, n]) => ({ dx, dy, w: n / divisor }));
+}
 
-// Atkinson diffuses only 6/8 of the error -> the crisp, high-contrast look of 1984 Mac.
-const ATKINSON: Kernel = [
-  { dx: 1, dy: 0, w: 1 / 8 },
-  { dx: 2, dy: 0, w: 1 / 8 },
-  { dx: -1, dy: 1, w: 1 / 8 },
-  { dx: 0, dy: 1, w: 1 / 8 },
-  { dx: 1, dy: 1, w: 1 / 8 },
-  { dx: 0, dy: 2, w: 1 / 8 },
-];
+// prettier-ignore
+const KERNELS: Record<string, Kernel> = {
+  "Floyd-Steinberg": k(16, [[1,0,7],[-1,1,3],[0,1,5],[1,1,1]]),
+  // Atkinson diffuses only 6/8 of the error -> the crisp, high-contrast 1984 Mac look.
+  "Atkinson": k(8, [[1,0,1],[2,0,1],[-1,1,1],[0,1,1],[1,1,1],[0,2,1]]),
+  "Jarvis-Judice-Ninke": k(48, [
+    [1,0,7],[2,0,5],
+    [-2,1,3],[-1,1,5],[0,1,7],[1,1,5],[2,1,3],
+    [-2,2,1],[-1,2,3],[0,2,5],[1,2,3],[2,2,1]]),
+  "Stucki": k(42, [
+    [1,0,8],[2,0,4],
+    [-2,1,2],[-1,1,4],[0,1,8],[1,1,4],[2,1,2],
+    [-2,2,1],[-1,2,2],[0,2,4],[1,2,2],[2,2,1]]),
+  "Burkes": k(32, [
+    [1,0,8],[2,0,4],
+    [-2,1,2],[-1,1,4],[0,1,8],[1,1,4],[2,1,2]]),
+  "Sierra": k(32, [
+    [1,0,5],[2,0,3],
+    [-2,1,2],[-1,1,4],[0,1,5],[1,1,4],[2,1,2],
+    [-1,2,2],[0,2,3],[1,2,2]]),
+  "Sierra Lite": k(4, [[1,0,2],[-1,1,1],[0,1,1]]),
+};
 
-const KERNELS: Record<string, Kernel> = { "Floyd-Steinberg": FLOYD, Atkinson: ATKINSON };
+const KERNEL_NAMES = Object.keys(KERNELS);
+const FLOYD = KERNELS["Floyd-Steinberg"];
 
 export const errorDiffusion: Filter = {
   id: "error-diffusion",
   name: "Error Diffusion",
   category: "dither",
   params: [
-    { key: "kernel", label: "Kernel", type: "select", default: "Floyd-Steinberg", options: ["Floyd-Steinberg", "Atkinson"] },
+    { key: "kernel", label: "Kernel", type: "select", default: "Floyd-Steinberg", options: KERNEL_NAMES },
     { key: "level", label: "Level", type: "range", default: 0.5, min: 0.05, max: 0.95, step: 0.01 },
     { key: "serpentine", label: "Serpentine", type: "toggle", default: true },
   ],

@@ -1,7 +1,8 @@
 import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
 import { runPipeline } from "../engine/pipeline";
-import { renderToCanvas, exportPNG } from "../io/render";
+import { renderToCanvas, exportPNG, exportText } from "../io/render";
+import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile } from "../io/loadImage";
 import { buildControl, el } from "./controls";
 
@@ -41,9 +42,15 @@ export function mountApp(root: HTMLElement): void {
   });
   root.appendChild(fileInput);
 
+  let lastResult: PipelineResult | null = null;
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
   const exportBtn = btn("EXPORT PNG", "", () => exportPNG(canvas, "mono.png"));
-  headerRight.append(openBtn, exportBtn);
+  const exportTxtBtn = btn("EXPORT TXT", "", () => {
+    const t = lastResult?.terminal?.text?.();
+    if (t) exportText(t, "mono.txt");
+  });
+  exportTxtBtn.style.display = "none"; // only when an ASCII (text) result is active
+  headerRight.append(openBtn, exportTxtBtn, exportBtn);
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {
@@ -77,6 +84,8 @@ export function mountApp(root: HTMLElement): void {
       return;
     }
     const result = runPipeline(store.source.gray, store.source.w, store.source.h, store.stack);
+    lastResult = result;
+    exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
     renderToCanvas(canvas, result);
   }
 

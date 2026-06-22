@@ -15,8 +15,10 @@ export function buildControl(item: StackItem, def: ParamDef): HTMLElement {
   if (def.type === "range") {
     const input = document.createElement("input");
     input.type = "range";
-    input.min = String(def.min ?? 0);
-    input.max = String(def.max ?? 1);
+    const min = def.min ?? 0;
+    const max = def.max ?? 1;
+    input.min = String(min);
+    input.max = String(max);
     input.step = String(def.step ?? 0.01);
     input.value = String(current);
     const val = el("span", "ctl-val");
@@ -25,7 +27,30 @@ export function buildControl(item: StackItem, def: ParamDef): HTMLElement {
       val.textContent = fmt(parseFloat(input.value));
       store.setParam(item.uid, def.key, parseFloat(input.value));
     });
-    row.appendChild(input);
+
+    if (def.ticks?.length) {
+      // wrap slider + anchored ticks (e.g. 80 / 120 cols); ticks are click-to-snap.
+      const wrap = el("div", "ctl-slider");
+      wrap.appendChild(input);
+      const ticks = el("div", "ctl-ticks");
+      for (const t of def.ticks) {
+        const pct = ((t - min) / (max - min)) * 100;
+        const tick = el("button", "ctl-tick");
+        tick.style.left = `${pct}%`;
+        tick.textContent = String(t);
+        tick.title = `Snap to ${t}`;
+        tick.addEventListener("click", () => {
+          input.value = String(t);
+          val.textContent = fmt(t);
+          store.setParam(item.uid, def.key, t);
+        });
+        ticks.appendChild(tick);
+      }
+      wrap.appendChild(ticks);
+      row.appendChild(wrap);
+    } else {
+      row.appendChild(input);
+    }
     row.appendChild(val);
   } else if (def.type === "toggle") {
     const input = document.createElement("input");

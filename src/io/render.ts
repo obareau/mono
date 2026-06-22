@@ -28,6 +28,16 @@ export function renderToCanvas(canvas: HTMLCanvasElement, result: PipelineResult
   ctx.putImageData(img, 0, 0);
 }
 
+export function exportText(text: string, name = "mono.txt"): void {
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function exportPNG(canvas: HTMLCanvasElement, name = "mono.png"): void {
   canvas.toBlob((blob) => {
     if (!blob) return;
