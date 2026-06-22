@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mono-splash.png" alt="MONO° — 1-bit effect software" width="100%">
+</p>
+
 # MONO°
 
 **An industrial 1-bit black & white image workbench.** Drop in a photo, stack screens and
@@ -7,6 +11,14 @@ pure MacPaint aesthetic.
 Black & white only, by design. The interface is grayscale with a single restrained orange accent.
 
 ![status](https://img.shields.io/badge/status-alpha-ff5a00)
+
+<p align="center">
+  <img src="assets/screenshot-dither.png" alt="MONO° workbench — error-diffusion dithering with the full filter palette" width="100%">
+</p>
+<p align="center">
+  <img src="assets/screenshot-glitch.png" alt="Scan-tear disruptor glitch" width="49%">
+  <img src="assets/screenshot-splash-dither.png" alt="The splash art, dithered in MONO°" width="49%">
+</p>
 
 ## Filters
 
