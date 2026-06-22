@@ -17,9 +17,11 @@ import { hatch } from "./hatch";
 import { contour } from "./contour";
 import { xdog } from "./xdog";
 import { gravure } from "./gravure";
+import { mezzotint } from "./mezzotint";
 import { GEOMETRY } from "./geometry";
 import { truchet } from "./truchet";
 import { circlePack } from "./circlePack";
+import { warp } from "./warp";
 import { DISRUPTORS } from "./disruptors";
 import { offset } from "./offset";
 import { ascii } from "./ascii";
@@ -36,6 +38,7 @@ export const FILTERS: Filter[] = [
   riemersma,
   bayer,
   thresholdMap,
+  mezzotint,
   blueNoise,
   patterns,
   halftone,
@@ -48,6 +51,7 @@ export const FILTERS: Filter[] = [
   ...GEOMETRY,
   truchet,
   circlePack,
+  warp,
   ...DISRUPTORS,
   offset,
   ascii,

@@ -25,6 +25,10 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [x] **Engraving** — flow-based (LIC) hatching that follows image forms
 - [x] **Truchet** — tone-driven arc/diagonal tiles
 - [x] **Circle Pack** — tone-density disc packing, vector-exportable
+- [x] **Mezzotint** — stochastic random-dot screening
+- [x] **Warp** — ripple / swirl / pinch / wave distortions
+- [ ] Reaction-Diffusion (Gray-Scott) — drafted but deferred: Turing presets are
+      unstable/slow on the live preview; needs dt tuning + a worker before shipping
 
 ## Ongoing — filters — all shipped ✅
 

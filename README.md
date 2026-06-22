@@ -36,6 +36,7 @@ Installable as a PWA (works offline). Open the link and choose "Install" / "Add 
 | **Riemersma** | Error diffusion along a Hilbert curve — isotropic, scanline-free grain |
 | **Ordered (Bayer)** | 2/4/8 matrix screens — the structured paint-program look |
 | **Threshold Map** | Dither against any loaded image as a custom screen (or built-in Bayer) |
+| **Mezzotint** | Stochastic random-dot screening — the intaglio grain |
 | **Blue Noise** | Void-and-cluster FM screen — fine organic grain, no pattern |
 | **Patterns** | MacPaint-style 8×8 fill tiles, tone-mapped or single-tile |
 | **Halftone** | Rotated dot / square / line screen — offset print "trame" (SVG/PDF export) |
@@ -49,6 +50,7 @@ Installable as a PWA (works offline). Open the link and choose "Install" / "Add 
 | **Geometry** | Pixel Mosaic, Adaptive Mosaic (cells by luminance), Triangulation (low-poly), Tessellation (hex), Voronoi |
 | **Truchet** | Tone-driven arc/diagonal tiles — a maze-like graphic weave |
 | **Circle Pack** | Non-overlapping discs, density follows tone — clean SVG/PDF export |
+| **Warp** | Geometric distortions — ripple, swirl, pinch/bulge, wave |
 | **Disruptors** | Block Displace, Bit Crush, Glyph Storm, Scanlines, Contour Shock, Scan Tear — glitch effects ported from the [terminal-synth](https://github.com/obareau/terminal-synth) VJ tool |
 | **Offset** | Misregistration ghosting + sliced scan-shift glitch |
 | **ASCII** | Text-mode rendering — **type the character ramp yourself**, export `.txt` / `.html` |
