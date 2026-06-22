@@ -32,6 +32,12 @@ const KERNELS: Record<string, Kernel> = {
     [-2,1,2],[-1,1,4],[0,1,5],[1,1,4],[2,1,2],
     [-1,2,2],[0,2,3],[1,2,2]]),
   "Sierra Lite": k(4, [[1,0,2],[-1,1,1],[0,1,1]]),
+  // Stevenson-Arce: large hexagonal kernel (divisor 200) — smooth, low-texture rendering.
+  "Stevenson-Arce": k(200, [
+    [2,0,32],
+    [-3,1,12],[-1,1,26],[1,1,30],[3,1,16],
+    [-2,2,12],[0,2,26],[2,2,12],
+    [-3,3,5],[-1,3,12],[1,3,12],[3,3,5]]),
 };
 
 const KERNEL_NAMES = Object.keys(KERNELS);

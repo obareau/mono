@@ -14,11 +14,16 @@ Black & white only, by design. The interface is grayscale with a single restrain
 |--------|--------------|
 | **Tone** | Brightness / contrast / gamma / invert — prep before screening |
 | **Threshold** | Hard 1-bit cut |
-| **Error Diffusion** | Floyd-Steinberg & Atkinson, serpentine scan |
+| **Error Diffusion** | Floyd-Steinberg, Atkinson, Jarvis-Judice-Ninke, Stucki, Burkes, Sierra, Sierra Lite, Stevenson-Arce — serpentine scan |
+| **Riemersma** | Error diffusion along a Hilbert curve — isotropic, scanline-free grain |
 | **Ordered (Bayer)** | 2/4/8 matrix screens — the structured paint-program look |
+| **Blue Noise** | Void-and-cluster FM screen — fine organic grain, no pattern |
+| **Patterns** | MacPaint-style 8×8 fill tiles, tone-mapped or single-tile |
 | **Halftone** | Rotated dot / square / line screen — offset print "trame" |
+| **Clustered Dot** | AM halftone screen locked to the pixel grid — growing press dots |
+| **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness |
 | **Offset** | Misregistration ghosting + sliced scan-shift glitch |
-| **ASCII** | Text-mode rendering — **type the character ramp yourself** |
+| **ASCII** | Text-mode rendering — **type the character ramp yourself**, export `.txt` |
 
 Filters apply **top to bottom** as a stack: reorder, toggle, and tweak each one live.
 Adding a new filter is one file + one registry line — controls are generated from the

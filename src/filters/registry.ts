@@ -2,8 +2,13 @@ import type { Filter } from "./types";
 import { tone } from "./tone";
 import { threshold } from "./threshold";
 import { errorDiffusion } from "./floydSteinberg";
+import { riemersma } from "./riemersma";
 import { bayer } from "./bayer";
+import { blueNoise } from "./blueNoise";
+import { patterns } from "./patterns";
 import { halftone } from "./halftone";
+import { clusteredDot } from "./clusteredDot";
+import { hatch } from "./hatch";
 import { offset } from "./offset";
 import { ascii } from "./ascii";
 
@@ -13,8 +18,13 @@ export const FILTERS: Filter[] = [
   tone,
   threshold,
   errorDiffusion,
+  riemersma,
   bayer,
+  blueNoise,
+  patterns,
   halftone,
+  clusteredDot,
+  hatch,
   offset,
   ascii,
 ];
