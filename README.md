@@ -24,6 +24,7 @@ Black & white only, by design. The interface is grayscale with a single restrain
 | **Halftone** | Rotated dot / square / line screen — offset print "trame" |
 | **Clustered Dot** | AM halftone screen locked to the pixel grid — growing press dots |
 | **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness |
+| **Disruptors** | Block Displace, Bit Crush, Glyph Storm, Scanlines, Contour Shock, Scan Tear — glitch events ported from the [terminal-synth](https://github.com/obareau/terminal-synth) VJ tool |
 | **Offset** | Misregistration ghosting + sliced scan-shift glitch |
 | **ASCII** | Text-mode rendering — **type the character ramp yourself**, export `.txt` |
 

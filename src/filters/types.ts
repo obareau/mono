@@ -26,7 +26,7 @@ export interface ParamDef {
 
 export type ParamValues = Record<string, number | boolean | string>;
 
-export type FilterCategory = "color" | "tone" | "dither" | "screen" | "offset" | "ascii";
+export type FilterCategory = "color" | "tone" | "dither" | "screen" | "offset" | "disrupt" | "ascii";
 
 // Output of a terminal filter: it draws straight onto the output canvas.
 export interface TerminalRender {
