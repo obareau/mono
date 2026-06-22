@@ -11,19 +11,43 @@ let uidCounter = 1;
 class Store {
   source: SourceImage | null = null;
   stack: StackItem[] = [];
-  private listeners = new Set<Listener>();
+  // animation
+  playing = false;
+  duration = 3; // loop length in seconds (for GIF export)
+  fps = 12;
+  private listeners = new Set<Listener>(); // structural changes -> rebuild sidebar
+  private renderListeners = new Set<Listener>(); // value changes -> redraw only
 
+  /** Structural changes (add/remove/reorder/source/playback): rebuild UI + redraw. */
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
+  /** Value changes (param/anim sliders): redraw without rebuilding the sidebar (keeps drags alive). */
+  subscribeRender(fn: Listener): () => void {
+    this.renderListeners.add(fn);
+    return () => this.renderListeners.delete(fn);
+  }
   private emit() {
     for (const l of this.listeners) l();
+    for (const l of this.renderListeners) l();
+  }
+  private emitRender() {
+    for (const l of this.renderListeners) l();
   }
 
   setSource(img: SourceImage) {
     this.source = img;
     this.emit();
+  }
+
+  setPlaying(v: boolean) {
+    this.playing = v;
+    this.emit();
+  }
+  setAnim(key: "duration" | "fps", value: number) {
+    this[key] = value;
+    this.emitRender();
   }
 
   addFilter(filterId: string) {
@@ -55,7 +79,7 @@ class Store {
   setParam(uid: number, key: string, value: number | boolean | string) {
     const it = this.stack.find((s) => s.uid === uid);
     if (it) it.params[key] = value;
-    this.emit();
+    this.emitRender();
   }
 
   clear() {

@@ -26,6 +26,12 @@ export interface ParamDef {
 
 export type ParamValues = Record<string, number | boolean | string>;
 
+// Animation context handed to filters each frame. time is in seconds; static renders pass 0.
+export interface FrameContext {
+  time: number;
+  frame: number;
+}
+
 export type FilterCategory = "color" | "tone" | "dither" | "screen" | "offset" | "disrupt" | "ascii";
 
 // Output of a terminal filter: it draws straight onto the output canvas.
@@ -46,8 +52,9 @@ export interface Filter {
   /** Source conversion. Builds the grayscale buffer from the original RGB planes (0..1).
    *  Used by photographic colour filters; always reads the unmodified source RGB. */
   fromRGB?(r: Gray, g: Gray, b: Gray, w: number, h: number, p: ParamValues): Gray;
-  /** Buffer transform. Receives & returns a grayscale buffer (values 0..1). */
-  apply?(gray: Gray, w: number, h: number, p: ParamValues): Gray;
+  /** Buffer transform. Receives & returns a grayscale buffer (values 0..1).
+   *  `ctx` carries the animation clock; static renders pass time 0. */
+  apply?(gray: Gray, w: number, h: number, p: ParamValues, ctx: FrameContext): Gray;
   /** Terminal render. Receives the grayscale buffer produced by upstream filters. */
   render?(gray: Gray, w: number, h: number, p: ParamValues): TerminalRender;
 }
