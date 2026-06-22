@@ -38,7 +38,7 @@ Black & white only, by design. The interface is grayscale with a single restrain
 | **Halftone** | Rotated dot / square / line screen — offset print "trame" (SVG/PDF export) |
 | **Clustered Dot** | AM halftone screen locked to the pixel grid — growing press dots (SVG/PDF export) |
 | **Stipple** | Ink dots — size, density, or **Poisson-disk** (blue-noise) modes; clean SVG/PDF export |
-| **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness |
+| **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness (SVG/PDF export) |
 | **Contour** | Topographic iso-luminance lines, optional band shading |
 | **Signal FX** | Image-as-signal: Echo, Distortion, Low-Pass, High-Pass, Flanger, Chorus |
 | **Geometry** | Pixel Mosaic, Adaptive Mosaic (cells by luminance), Triangulation (low-poly), Tessellation (hex), Voronoi |
