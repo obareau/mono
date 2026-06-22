@@ -17,9 +17,9 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [x] **Vector export (SVG / PDF).** Dependency-free SVG and PDF writers. Halftone,
       Clustered Dot, and the new Stipple filter emit resolution-independent dots; EXPORT
       SVG/PDF appear when such a filter is in the stack and run at native resolution.
-      (Hatch vector — variable-width line segments — left for later.)
+      Hatch also exports as variable-width line segments — every screen now vectorizes.
 
-## Ongoing — filters
+## Ongoing — filters — all shipped ✅
 
 - [x] Voronoi tessellation (jittered seeds, nearest-cell flat fill)
 - [x] Contour / topographic iso-luminance lines (optional band shading)
@@ -27,7 +27,7 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
       "poisson" mode on the Stipple filter, alongside size/density
 - [x] Hatch vector export — variable-width line segments (lines/crosshatch/spiral)
 - [x] Custom **threshold-map** dithering — load any image as the dither screen (Bayer fallback)
-- [ ] ASCII export to coloured HTML
+- [x] ASCII export to a standalone styled HTML page
 
 ## Scope — MONO° is a still-image tool
 

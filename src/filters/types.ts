@@ -34,6 +34,8 @@ export interface TerminalRender {
   draw(ctx: CanvasRenderingContext2D, outW: number, outH: number): void;
   /** Plain-text representation, if the filter has one (ASCII). Enables .txt export. */
   text?(): string;
+  /** Standalone styled HTML document of the same content. Enables .html export. */
+  html?(): string;
 }
 
 // Vector output — resolution-independent primitives in image pixel coordinates, all drawn

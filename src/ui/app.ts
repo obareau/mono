@@ -85,7 +85,12 @@ export function mountApp(root: HTMLElement): void {
     const t = lastResult?.terminal?.text?.();
     if (t) exportText(t, "mono.txt");
   });
-  exportTxtBtn.style.display = "none"; // only when an ASCII (text) result is active
+  const exportHtmlBtn = btn("EXPORT HTML", "", () => {
+    const html = lastResult?.terminal?.html?.();
+    if (html) downloadText(html, "mono.html", "text/html");
+  });
+  exportTxtBtn.style.display = "none"; // both shown only when an ASCII (text) result is active
+  exportHtmlBtn.style.display = "none";
 
   // Vector export — re-runs the stack to the last vector-capable filter at native resolution.
   function exportVector(kind: "svg" | "pdf") {
@@ -112,7 +117,7 @@ export function mountApp(root: HTMLElement): void {
       shareBtn.textContent = "COPY LINK";
     }
   });
-  headerRight.append(openBtn, shareBtn, exportTxtBtn, svgBtn, pdfBtn, exportBtn);
+  headerRight.append(openBtn, shareBtn, exportTxtBtn, exportHtmlBtn, svgBtn, pdfBtn, exportBtn);
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {
@@ -148,6 +153,7 @@ export function mountApp(root: HTMLElement): void {
     const result = runPipeline(store.source, store.stack);
     lastResult = result;
     exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
+    exportHtmlBtn.style.display = result.terminal?.html ? "" : "none";
     const hasVector = lastVectorIndex(store.stack) >= 0;
     svgBtn.style.display = hasVector ? "" : "none";
     pdfBtn.style.display = hasVector ? "" : "none";

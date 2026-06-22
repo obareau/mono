@@ -58,6 +58,16 @@ export const ascii: Filter = {
       text() {
         return lines.join("\n");
       },
+      html() {
+        const esc = lines.join("\n").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const bg = darkBg ? "#000" : "#fff";
+        const fg = darkBg ? "#fff" : "#000";
+        return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>MONO° ASCII</title>
+<style>html,body{margin:0;background:${bg}}
+pre{font:12px/1 "SFMono-Regular",Menlo,Consolas,monospace;color:${fg};padding:20px;white-space:pre;letter-spacing:0}</style>
+</head><body><pre>${esc}</pre></body></html>`;
+      },
       draw(ctx, outW, outH) {
         const fontSize = outW / cols / CHAR_ASPECT;
         const lineH = outH / rows;
