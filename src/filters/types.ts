@@ -32,7 +32,7 @@ export interface FrameContext {
   frame: number;
 }
 
-export type FilterCategory = "color" | "tone" | "dither" | "screen" | "offset" | "disrupt" | "ascii";
+export type FilterCategory = "color" | "tone" | "signal" | "dither" | "screen" | "offset" | "disrupt" | "ascii";
 
 // Output of a terminal filter: it draws straight onto the output canvas.
 export interface TerminalRender {

@@ -1,6 +1,7 @@
 import type { Filter } from "./types";
 import { photoFilter } from "./photoFilter";
 import { tone } from "./tone";
+import { SIGNAL_FX } from "./signalFx";
 import { threshold } from "./threshold";
 import { errorDiffusion } from "./floydSteinberg";
 import { ostromoukhov } from "./ostromoukhov";
@@ -20,6 +21,7 @@ import { ascii } from "./ascii";
 export const FILTERS: Filter[] = [
   photoFilter,
   tone,
+  ...SIGNAL_FX,
   threshold,
   errorDiffusion,
   ostromoukhov,
