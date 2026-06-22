@@ -23,8 +23,9 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 
 - [x] Voronoi tessellation (jittered seeds, nearest-cell flat fill)
 - [x] Contour / topographic iso-luminance lines (optional band shading)
+- [x] True Poisson-disk stippling (variable-radius Bridson, density follows tone) — a
+      "poisson" mode on the Stipple filter, alongside size/density
 - [ ] Hatch vector export (variable-width line segments)
-- [ ] True Poisson-disk stippling (the current Stipple is jittered-grid)
 - [ ] Custom **threshold-map** dithering (use any image as the dither mask)
 - [ ] ASCII export to coloured HTML
 
