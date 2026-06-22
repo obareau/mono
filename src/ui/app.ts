@@ -3,7 +3,7 @@ import { FILTERS, getFilter } from "../filters/registry";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { renderToCanvas, exportPNG, exportText } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
-import { shareURL } from "../io/presets";
+import { shareURL, STARTER_PRESETS } from "../io/presets";
 import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile, fromBitmap } from "../io/loadImage";
 import { buildControl, el } from "./controls";
@@ -157,6 +157,17 @@ export function mountApp(root: HTMLElement): void {
   };
   function renderLeft() {
     left.innerHTML = "";
+
+    // one-click starter presets
+    const pre = el("section", "panel");
+    pre.appendChild(heading("PRESETS"));
+    const pgrid = el("div", "palette two");
+    for (const preset of STARTER_PRESETS) {
+      pgrid.appendChild(btn(preset.name.toUpperCase(), "chip", () => store.setStack(preset.items)));
+    }
+    pre.appendChild(pgrid);
+    left.appendChild(pre);
+
     const seen = new Set<string>();
     for (const f of FILTERS) {
       if (!seen.has(f.category)) {

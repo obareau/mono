@@ -2,9 +2,13 @@ import "./style.css";
 import { mountApp } from "./ui/app";
 import { store } from "./state/store";
 import { loadFromHash, loadLocal, saveLocal } from "./io/presets";
+import { demoImage } from "./io/demo";
 
 const root = document.getElementById("app")!;
 mountApp(root);
+
+// Show a demo image on first load so the workbench isn't an empty canvas.
+store.setSource(demoImage());
 
 // Restore the stack: a shared URL (#s=...) wins, then the last session, then a default.
 const shared = loadFromHash();

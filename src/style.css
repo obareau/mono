@@ -163,6 +163,8 @@ html, body {
 .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 /* left browser: single-column list, left-aligned, tighter sections */
 .panel-left .palette { grid-template-columns: 1fr; gap: 4px; }
+.panel-left .palette.two { grid-template-columns: 1fr 1fr; }
+.panel-left .palette.two .btn.chip { text-align: center; }
 .panel-left .btn.chip { text-align: left; }
 .panel-left .panel { padding: 8px 10px; }
 
