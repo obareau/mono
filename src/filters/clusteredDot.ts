@@ -39,4 +39,21 @@ export const clusteredDot: Filter = {
     }
     return gray;
   },
+  // Vector: AM dot screen at 0°. The 8×8 tile holds ~2 dots, so the dot period is 4·scale.
+  toVector(gray, w, h, p) {
+    const scale = Math.max(1, Math.round(p.scale as number));
+    const period = 4 * scale;
+    const prims: import("./types").VecPrim[] = [];
+    for (let by = 0; by < h; by += period) {
+      for (let bx = 0; bx < w; bx += period) {
+        let sum = 0, n = 0;
+        const ey = Math.min(h, by + period), ex = Math.min(w, bx + period);
+        for (let y = by; y < ey; y++) for (let x = bx; x < ex; x++) { sum += gray[y * w + x]; n++; }
+        const ink = 1 - (n ? sum / n : 1);
+        const r = Math.sqrt(Math.max(0, ink)) * period * 0.62;
+        if (r > 0.15) prims.push({ t: "circle", cx: bx + period / 2, cy: by + period / 2, r });
+      }
+    }
+    return { w, h, prims };
+  },
 };

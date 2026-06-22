@@ -14,13 +14,16 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 
 ## Tier 2 — print-grade output
 
-- [ ] **Vector export (SVG / PDF)** for Halftone, Clustered Dot, Hatch, and stippling —
-      crisp screens at any print size. The headline Tier 2 feature.
+- [x] **Vector export (SVG / PDF).** Dependency-free SVG and PDF writers. Halftone,
+      Clustered Dot, and the new Stipple filter emit resolution-independent dots; EXPORT
+      SVG/PDF appear when such a filter is in the stack and run at native resolution.
+      (Hatch vector — variable-width line segments — left for later.)
 
 ## Ongoing — filters
 
 - [ ] Voronoi tessellation (the natural step after the hex tiling)
-- [ ] True Poisson-disk stippling
+- [ ] Hatch vector export (variable-width line segments)
+- [ ] True Poisson-disk stippling (the current Stipple is jittered-grid)
 - [ ] Contour / topographic lines
 - [ ] Custom **threshold-map** dithering (use any image as the dither mask)
 - [ ] ASCII export to coloured HTML

@@ -10,6 +10,10 @@ function sample(gray: Float32Array, w: number, h: number, x: number, y: number):
   return gray[yi * w + xi];
 }
 
+function i_(x: number, y: number, w: number): number {
+  return y * w + x;
+}
+
 export const halftone: Filter = {
   id: "halftone",
   name: "Halftone",
@@ -68,8 +72,36 @@ export const halftone: Filter = {
     }
     return out;
   },
+  // Vector: one dot per screen cell, placed back in image space (a circle is rotation-free).
+  toVector(gray, w, h, p) {
+    const cell = p.cell as number;
+    const ang = ((p.angle as number) * Math.PI) / 180;
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const cx = w / 2;
+    const cy = h / 2;
+    // screen-space extent covering the four image corners
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (const [X, Y] of [[0, 0], [w, 0], [0, h], [w, h]] as const) {
+      const dx = X - cx, dy = Y - cy;
+      const u = dx * cos - dy * sin;
+      const v = dx * sin + dy * cos;
+      minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+      minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+    }
+    const prims: import("./types").VecPrim[] = [];
+    for (let j = Math.floor(minV / cell) - 1; j <= Math.ceil(maxV / cell) + 1; j++) {
+      for (let i = Math.floor(minU / cell) - 1; i <= Math.ceil(maxU / cell) + 1; i++) {
+        const cu = (i + 0.5) * cell;
+        const cv = (j + 0.5) * cell;
+        const sx = cu * cos + cv * sin + cx;
+        const sy = -cu * sin + cv * cos + cy;
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue;
+        const ink = 1 - sample(gray, w, h, sx, sy);
+        const r = Math.sqrt(Math.max(0, ink)) * cell * 0.62;
+        if (r > 0.15) prims.push({ t: "circle", cx: sx, cy: sy, r });
+      }
+    }
+    return { w, h, prims };
+  },
 };
-
-function i_(x: number, y: number, w: number): number {
-  return y * w + x;
-}

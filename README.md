@@ -35,8 +35,9 @@ Black & white only, by design. The interface is grayscale with a single restrain
 | **Ordered (Bayer)** | 2/4/8 matrix screens — the structured paint-program look |
 | **Blue Noise** | Void-and-cluster FM screen — fine organic grain, no pattern |
 | **Patterns** | MacPaint-style 8×8 fill tiles, tone-mapped or single-tile |
-| **Halftone** | Rotated dot / square / line screen — offset print "trame" |
-| **Clustered Dot** | AM halftone screen locked to the pixel grid — growing press dots |
+| **Halftone** | Rotated dot / square / line screen — offset print "trame" (SVG/PDF export) |
+| **Clustered Dot** | AM halftone screen locked to the pixel grid — growing press dots (SVG/PDF export) |
+| **Stipple** | Ink dots, size- or density-modulated by tone — clean SVG/PDF export |
 | **Hatch** | Lines / crosshatch / spiral screens, tone-driven thickness |
 | **Signal FX** | Image-as-signal: Echo, Distortion, Low-Pass, High-Pass, Flanger, Chorus |
 | **Geometry** | Pixel Mosaic, Adaptive Mosaic (cells by luminance), Triangulation (low-poly), Tessellation (hex) |
@@ -61,8 +62,11 @@ npm run dev
 
 Then drop, paste, or open an image.
 
-- **Export** writes a 1:1 PNG.
-- ASCII is a *terminal* filter: it renders its own glyph grid and ends the buffer chain.
+- **EXPORT PNG** re-runs the stack at the source's native resolution.
+- **EXPORT SVG / PDF** appear when a vector-capable screen (Halftone, Clustered Dot, Stipple)
+  is in the stack — resolution-independent dots for print.
+- **COPY LINK** shares the whole filter stack via a URL.
+- ASCII is a *terminal* filter: it renders its own glyph grid and exports `.txt`.
 
 ## Architecture
 

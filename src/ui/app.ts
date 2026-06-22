@@ -1,7 +1,8 @@
 import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
-import { runPipeline } from "../engine/pipeline";
+import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { renderToCanvas, exportPNG, exportText } from "../io/render";
+import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
 import { shareURL } from "../io/presets";
 import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile, fromBitmap } from "../io/loadImage";
@@ -78,6 +79,21 @@ export function mountApp(root: HTMLElement): void {
     if (t) exportText(t, "mono.txt");
   });
   exportTxtBtn.style.display = "none"; // only when an ASCII (text) result is active
+
+  // Vector export — re-runs the stack to the last vector-capable filter at native resolution.
+  function exportVector(kind: "svg" | "pdf") {
+    const src = store.source;
+    if (!src) return;
+    const hiSrc = src.bitmap ? fromBitmap(src.bitmap, Math.min(EXPORT_MAX, Math.max(src.natW, src.natH))) : src;
+    const scene = runToVector(hiSrc, store.stack);
+    if (!scene) return;
+    if (kind === "svg") downloadText(sceneToSVG(scene), "mono.svg", "image/svg+xml");
+    else downloadBytes(sceneToPDF(scene), "mono.pdf", "application/pdf");
+  }
+  const svgBtn = btn("EXPORT SVG", "", () => exportVector("svg"));
+  const pdfBtn = btn("EXPORT PDF", "", () => exportVector("pdf"));
+  svgBtn.style.display = "none";
+  pdfBtn.style.display = "none";
   const shareBtn = btn("COPY LINK", "", async () => {
     const url = shareURL(store.serialize());
     history.replaceState(null, "", url);
@@ -89,7 +105,7 @@ export function mountApp(root: HTMLElement): void {
       shareBtn.textContent = "COPY LINK";
     }
   });
-  headerRight.append(openBtn, shareBtn, exportTxtBtn, exportBtn);
+  headerRight.append(openBtn, shareBtn, exportTxtBtn, svgBtn, pdfBtn, exportBtn);
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {
@@ -125,6 +141,9 @@ export function mountApp(root: HTMLElement): void {
     const result = runPipeline(store.source, store.stack);
     lastResult = result;
     exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
+    const hasVector = lastVectorIndex(store.stack) >= 0;
+    svgBtn.style.display = hasVector ? "" : "none";
+    pdfBtn.style.display = hasVector ? "" : "none";
     renderToCanvas(canvas, result);
   }
 

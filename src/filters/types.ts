@@ -36,6 +36,19 @@ export interface TerminalRender {
   text?(): string;
 }
 
+// Vector output — resolution-independent primitives in image pixel coordinates, all drawn
+// in ink (black) on a white ground. Emitted by analytic screen filters for SVG/PDF export.
+export type VecPrim =
+  | { t: "circle"; cx: number; cy: number; r: number }
+  | { t: "rect"; x: number; y: number; w: number; h: number }
+  | { t: "line"; x1: number; y1: number; x2: number; y2: number; sw: number };
+
+export interface VectorScene {
+  w: number;
+  h: number;
+  prims: VecPrim[];
+}
+
 export interface Filter {
   id: string;
   name: string;
@@ -50,6 +63,8 @@ export interface Filter {
   apply?(gray: Gray, w: number, h: number, p: ParamValues): Gray;
   /** Terminal render. Receives the grayscale buffer produced by upstream filters. */
   render?(gray: Gray, w: number, h: number, p: ParamValues): TerminalRender;
+  /** Vector emission for SVG/PDF export. Built from the upstream grayscale buffer. */
+  toVector?(gray: Gray, w: number, h: number, p: ParamValues): VectorScene;
 }
 
 /** Build a default param-values object from a filter definition. */
