@@ -279,6 +279,19 @@ html, body {
 .fcard.off { opacity: 0.5; }
 .fcard-bar { cursor: grab; user-select: none; }
 .fcard.dragging-card .fcard-bar { cursor: grabbing; }
+
+/* floating label that follows the pointer while reordering a filter */
+.drag-ghost {
+  position: fixed; z-index: 300; left: 0; top: 0;
+  transform: translate(14px, 10px); pointer-events: none;
+  padding: 3px 9px;
+  font-family: var(--ui); font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+  color: var(--ink); background: var(--blue-bg);
+  border: 1px solid var(--ink); border-radius: 7px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  opacity: 0.95;
+}
+.drag-ghost i { font-style: normal; color: var(--gray-4); margin-right: 5px; }
 .fcard.dragging-card { opacity: 0.4; }
 .fcard.drop-target { box-shadow: 0 -2px 0 var(--orange); }
 .fcard.terminal { box-shadow: 0 0 0 1px var(--orange), 1px 1px 0 rgba(0,0,0,0.2); }

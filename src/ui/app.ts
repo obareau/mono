@@ -636,16 +636,23 @@ export function mountApp(root: HTMLElement): void {
       const clearTargets = () => side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
       const cardUnder = (x: number, y: number) =>
         (document.elementFromPoint(x, y) as HTMLElement | null)?.closest(".fcard") as HTMLElement | null;
+      let ghost: HTMLElement | null = null; // floating label following the pointer
+      const moveGhost = (x: number, y: number) => { if (ghost) { ghost.style.left = `${x}px`; ghost.style.top = `${y}px`; } };
       bar.addEventListener("pointerdown", (e) => {
         if (e.button !== 0 && e.pointerType === "mouse") return;     // primary button only
         if ((e.target as HTMLElement).closest(".fcard-tools")) return; // let the tool buttons work
         dragUid = item.uid;
         card.classList.add("dragging-card");
+        ghost = el("div", "drag-ghost");
+        ghost.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
+        document.body.appendChild(ghost);
+        moveGhost(e.clientX, e.clientY);
         try { bar.setPointerCapture(e.pointerId); } catch { /* no active pointer (synthetic) */ }
         e.preventDefault();
       });
       bar.addEventListener("pointermove", (e) => {
         if (dragUid !== item.uid) return;
+        moveGhost(e.clientX, e.clientY);
         const over = cardUnder(e.clientX, e.clientY);
         clearTargets();
         if (over && over !== card) over.classList.add("drop-target");
@@ -655,6 +662,7 @@ export function mountApp(root: HTMLElement): void {
         const over = cardUnder(e.clientX, e.clientY);
         clearTargets();
         card.classList.remove("dragging-card");
+        ghost?.remove(); ghost = null;
         const toUid = over && over !== card ? Number(over.dataset.uid) : 0;
         dragUid = null;
         if (toUid) store.reorder(item.uid, toUid);
