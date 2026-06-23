@@ -68,6 +68,94 @@ export const STARTER_PRESETS: NamedPreset[] = [
   { name: "Low-Poly", items: [fx("triangulate", { cell: 24 }), fx("error-diffusion", { kernel: "Atkinson" }, 0.6)] },
 ];
 
+// ---- user presets (named, saved to localStorage) ----
+
+const LS_USER_KEY = "mono:presets";
+
+export function loadUserPresets(): NamedPreset[] {
+  try {
+    const arr = JSON.parse(localStorage.getItem(LS_USER_KEY) ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((p) => p && typeof p.name === "string" && Array.isArray(p.items));
+  } catch {
+    return [];
+  }
+}
+
+function saveUserPresets(list: NamedPreset[]): void {
+  try {
+    localStorage.setItem(LS_USER_KEY, JSON.stringify(list));
+  } catch {
+    /* storage may be unavailable — ignore */
+  }
+}
+
+/** Add (or replace by name) a named preset; returns the updated list. */
+export function saveUserPreset(name: string, items: PresetItem[]): NamedPreset[] {
+  const list = loadUserPresets().filter((p) => p.name !== name);
+  list.push({ name, items });
+  saveUserPresets(list);
+  return list;
+}
+
+/** Remove a named preset; returns the updated list. */
+export function deleteUserPreset(name: string): NamedPreset[] {
+  const list = loadUserPresets().filter((p) => p.name !== name);
+  saveUserPresets(list);
+  return list;
+}
+
+/** Serialize all user presets to a JSON string for download. */
+export function exportUserPresets(list: NamedPreset[]): string {
+  return JSON.stringify({ mono: "presets", v: 1, presets: list }, null, 2);
+}
+
+/** Parse an imported preset file and merge into the saved list (imported wins by name). */
+export function importUserPresets(json: string): NamedPreset[] | null {
+  try {
+    const data = JSON.parse(json);
+    const incoming = Array.isArray(data) ? data : data?.presets;
+    if (!Array.isArray(incoming)) return null;
+    const byName = new Map<string, NamedPreset>();
+    for (const p of loadUserPresets()) byName.set(p.name, p);
+    for (const p of incoming) {
+      if (p && typeof p.name === "string" && Array.isArray(p.items)) byName.set(p.name, { name: p.name, items: p.items });
+    }
+    const merged = [...byName.values()];
+    saveUserPresets(merged);
+    return merged;
+  } catch {
+    return null;
+  }
+}
+
+// ---- favourite filters (ids, pinned to the top of the browser) ----
+
+const LS_FAV_KEY = "mono:favourites";
+
+export function loadFavourites(): string[] {
+  try {
+    const a = JSON.parse(localStorage.getItem(LS_FAV_KEY) ?? "[]");
+    return Array.isArray(a) ? a.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Toggle a filter id in/out of favourites; returns the updated list. */
+export function toggleFavourite(id: string): string[] {
+  const set = new Set(loadFavourites());
+  if (set.has(id)) set.delete(id);
+  else set.add(id);
+  const list = [...set];
+  try {
+    localStorage.setItem(LS_FAV_KEY, JSON.stringify(list));
+  } catch {
+    /* storage may be unavailable — ignore */
+  }
+  return list;
+}
+
 export function saveLocal(items: PresetItem[]): void {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(items));

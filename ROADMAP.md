@@ -11,27 +11,32 @@ shareable stacks, and is live at <https://obareau.github.io/mono/>.
 Now that features are rich, the goal shifts from *more filters* to making the tool **pleasant
 to use with 42 filters** and **hardening** it. Recommended order: A → B → C, with D ongoing.
 
-## Lane A — workflow depth (do first)
+## Lane A — workflow depth ✅
 
-- [ ] **Undo / redo.** History ring of serialized stack states; push on structural change and
-      (debounced) on value change; `Ctrl/Cmd+Z` / `Shift+…+Z`.
-- [ ] **User presets.** Save the current stack under a name → localStorage list; a "MY PRESETS"
-      group in the left panel with delete; optional export/import of a preset file.
-- [ ] **Filter browser search + favourites.** A filter box that filters the (now long) left
-      list; star a filter → a Favourites group pinned at the top.
-- [ ] **Randomize.** One click builds a sensible random stack (a base dither/screen, maybe a
-      tone/colour prep, maybe one disruptor), seeded so it's shareable.
-- [ ] **Canvas niceties.** Before/after toggle (hold to see source); wheel zoom + drag pan;
-      a few keyboard shortcuts (open / export / undo / randomize).
+- [x] **Undo / redo.** History ring of serialized stack states; pushes on structural change and
+      (debounced) on value change; UNDO/REDO buttons + `Ctrl/Cmd+Z` / `Shift+…+Z` / `Ctrl+Y`.
+- [x] **User presets.** Save the current stack under a name → localStorage list; a "MY PRESETS"
+      group in the left panel with apply/delete and export/import of a preset file.
+- [x] **Filter browser search + favourites.** A search box filters the (now long) left list
+      live (by name + category); star a filter → a Favourites group pinned at the top.
+- [x] **Randomize.** RANDOM (in the PRESETS header) builds a sensible seeded stack — an
+      optional tone/colour prep, one base dither/screen/geometry, sometimes a disruptor at
+      reduced opacity; params biased to the middle of each range. Realized stack shares as usual.
+- [x] **Canvas niceties.** Hold **B** for before/after (shows the colour source); wheel zoom
+      toward the cursor + drag to pan + double-click / **0** to reset; shortcuts **O** open,
+      **E** export PNG, **R** randomize (undo/redo via ⌘Z/⇧⌘Z).
 
-## Lane B — performance (Web Worker)
+## Lane B — performance (Web Worker) ✅
 
-- [ ] **Run the pipeline off the main thread.** Transfer the source planes to a worker once;
-      on change, post the serialized stack + a request id and get back the gray buffer
-      (transferable); debounce and drop stale results so the UI never freezes — important now
-      that Engraving (LIC), Circle Pack and big stacks are heavy. ASCII/terminal render and
-      `toVector` export can stay on the main thread (worker returns the buffer).
-- [ ] This unblocks **Reaction-Diffusion** (heavy, iterative) and any future costly filter.
+- [x] **Run the pipeline off the main thread.** Source planes are sent to the worker once per
+      image; each change posts the serialized stack + a request id and gets the gray buffer
+      back (transferred). At most one run is in flight and requests coalesce to the latest
+      stack, so results are never stale and the UI never freezes — important now that
+      Engraving (LIC), Circle Pack and big stacks are heavy. ASCII/terminal render and
+      `toVector` export stay on the main thread (worker returns the buffer + a terminal
+      marker); custom threshold-map masks are synced to the worker. Falls back to a
+      synchronous run if a Worker can't be created.
+- [x] This unblocks **Reaction-Diffusion** (heavy, iterative) and any future costly filter.
 
 ## Lane C — pro / print output
 

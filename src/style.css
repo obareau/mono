@@ -123,7 +123,8 @@ html, body {
   letter-spacing: 0.5px;
   background: var(--blue-bg); /* mask pinstripes behind text */
 }
-.canvas-wrap { padding: 3px; background: var(--win); line-height: 0; }
+.canvas-wrap { padding: 3px; background: var(--win); line-height: 0; overflow: hidden; cursor: grab; }
+.canvas-wrap.panning { cursor: grabbing; }
 .output {
   display: block;
   max-width: min(58vw, 1000px);
@@ -195,6 +196,7 @@ html, body {
   cursor: pointer;
 }
 .btn:active { background: var(--ink); color: var(--platinum-hi); }
+.btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 .btn.primary {
   background: linear-gradient(var(--blue-hi, #5b82e8), var(--blue));
   color: #fff;
@@ -209,6 +211,27 @@ html, body {
 }
 .btn.chip:hover { background: linear-gradient(var(--blue-pin), #aebfe8); }
 .btn.mini { padding: 1px 8px; font-size: 9px; border-radius: 6px; }
+
+.preset-row { display: flex; gap: 4px; align-items: stretch; margin-top: 4px; }
+.preset-row .btn.chip { flex: 1; text-align: left; }
+
+/* filter-browser search + favourite chips */
+.search {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--ui);
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.btn.chip.filter-chip { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.filter-chip .chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-chip .star { font-size: 11px; line-height: 1; opacity: 0.4; flex: none; }
+.filter-chip .star:hover { opacity: 1; }
+.filter-chip .star.on { opacity: 1; color: var(--blue); }
 
 .ibtn {
   font-family: var(--mono);

@@ -1,9 +1,16 @@
 import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
+import type { Filter } from "../filters/types";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { renderToCanvas, exportPNG, exportText } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
-import { shareURL, STARTER_PRESETS } from "../io/presets";
+import {
+  shareURL, STARTER_PRESETS,
+  loadUserPresets, saveUserPreset, deleteUserPreset, exportUserPresets, importUserPresets,
+  loadFavourites, toggleFavourite,
+} from "../io/presets";
+import { randomStack } from "../io/randomize";
+import { getMasksVersion, allMasks } from "../io/maskStore";
 import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile, fromBitmap } from "../io/loadImage";
 import { buildControl, el } from "./controls";
@@ -117,7 +124,28 @@ export function mountApp(root: HTMLElement): void {
       shareBtn.textContent = "COPY LINK";
     }
   });
-  headerRight.append(openBtn, shareBtn, exportTxtBtn, exportHtmlBtn, svgBtn, pdfBtn, exportBtn);
+  const undoBtn = btn("UNDO", "", () => store.undo());
+  const redoBtn = btn("REDO", "", () => store.redo());
+  undoBtn.title = "Undo (⌘Z / Ctrl+Z)";
+  redoBtn.title = "Redo (⇧⌘Z / Ctrl+Y)";
+  function updateHistoryButtons() {
+    undoBtn.disabled = !store.canUndo();
+    redoBtn.disabled = !store.canRedo();
+  }
+  store.subscribeHistory(updateHistoryButtons);
+  updateHistoryButtons();
+
+  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportTxtBtn, exportHtmlBtn, svgBtn, pdfBtn, exportBtn);
+
+  // keyboard: undo / redo (ignore while typing in a text field)
+  window.addEventListener("keydown", (e) => {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "TEXTAREA" || (target.tagName === "INPUT" && (target as HTMLInputElement).type === "text"))) return;
+    const k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); }
+    else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); store.redo(); }
+  });
 
   // drag & drop + paste
   stage.addEventListener("dragover", (e) => {
@@ -136,21 +164,106 @@ export function mountApp(root: HTMLElement): void {
     if (f) store.setSource(await loadImageFile(f));
   });
 
-  // ---- render ----
-  function redraw() {
-    if (!store.source) {
-      canvas.width = 640;
-      canvas.height = 400;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, 640, 400);
-      ctx.fillStyle = "#999";
-      ctx.font = '14px "SFMono-Regular", Menlo, monospace';
-      ctx.textAlign = "center";
-      ctx.fillText("DROP · PASTE · OPEN AN IMAGE", 320, 200);
-      return;
+  // wheel to zoom toward the cursor; drag to pan; double-click to reset
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  canvasWrap.addEventListener("wheel", (e) => {
+    if (!store.source) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const ox = e.clientX - rect.left;
+    const oy = e.clientY - rect.top;
+    const newZoom = clamp(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), 0.2, 8);
+    const k = newZoom / zoom;
+    panX += ox * (1 - k);
+    panY += oy * (1 - k);
+    zoom = newZoom;
+    applyTransform();
+  }, { passive: false });
+
+  let panning = false, lastX = 0, lastY = 0;
+  canvasWrap.addEventListener("mousedown", (e) => {
+    if (!store.source) return;
+    panning = true; lastX = e.clientX; lastY = e.clientY;
+    canvasWrap.classList.add("panning");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!panning) return;
+    panX += e.clientX - lastX; panY += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    applyTransform();
+  });
+  window.addEventListener("mouseup", () => { panning = false; canvasWrap.classList.remove("panning"); });
+  canvasWrap.addEventListener("dblclick", () => { if (store.source) resetView(); });
+
+  // single-key shortcuts: O open · E export · R randomize · 0 reset zoom · hold B for before/after
+  const isTyping = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    return !!t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT");
+  };
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return;
+    switch (e.key.toLowerCase()) {
+      case "o": e.preventDefault(); fileInput.click(); break;
+      case "e": if (store.source) { e.preventDefault(); exportPNGFull(); } break;
+      case "r": e.preventDefault(); store.setStack(randomStack()); break;
+      case "0": if (store.source) { e.preventDefault(); resetView(); } break;
+      case "b": if (store.source && !showSource) { e.preventDefault(); showSource = true; redraw(); } break;
     }
-    const result = runPipeline(store.source, store.stack);
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.key.toLowerCase() === "b" && showSource) { showSource = false; redraw(); }
+  });
+
+  // ---- view: zoom / pan / before-after ----
+  let zoom = 1;
+  let panX = 0;
+  let panY = 0;
+  let showSource = false; // hold to compare against the original
+  let lastSource: typeof store.source = null; // reset the view when a new image loads
+
+  function applyTransform() {
+    canvas.style.transformOrigin = "0 0";
+    canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  }
+  function resetView() {
+    zoom = 1; panX = 0; panY = 0;
+    applyTransform();
+  }
+
+  // Draw the untouched (colour) source — the "before" of the comparison.
+  function drawSource() {
+    const src = store.source!;
+    canvas.width = src.w;
+    canvas.height = src.h;
+    const ctx = canvas.getContext("2d")!;
+    const img = ctx.createImageData(src.w, src.h);
+    const d = img.data;
+    for (let i = 0, j = 0; i < src.gray.length; i++, j += 4) {
+      d[j] = Math.round(src.r[i] * 255);
+      d[j + 1] = Math.round(src.g[i] * 255);
+      d[j + 2] = Math.round(src.b[i] * 255);
+      d[j + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---- render ----
+  function drawPlaceholder() {
+    canvas.style.transform = "";
+    canvas.width = 640;
+    canvas.height = 400;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, 640, 400);
+    ctx.fillStyle = "#999";
+    ctx.font = '14px "SFMono-Regular", Menlo, monospace';
+    ctx.textAlign = "center";
+    ctx.fillText("DROP · PASTE · OPEN AN IMAGE", 320, 200);
+  }
+
+  // Paint a finished pipeline result and sync the export buttons to it.
+  function applyPipelineResult(result: PipelineResult) {
     lastResult = result;
     exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
     exportHtmlBtn.style.display = result.terminal?.html ? "" : "none";
@@ -158,6 +271,64 @@ export function mountApp(root: HTMLElement): void {
     svgBtn.style.display = hasVector ? "" : "none";
     pdfBtn.style.display = hasVector ? "" : "none";
     renderToCanvas(canvas, result);
+    applyTransform();
+  }
+
+  // The pipeline runs in a Web Worker so heavy filters (Engraving/LIC, Circle Pack, big
+  // stacks) never freeze the UI. We keep at most one run in flight and coalesce to the
+  // latest stack, so results are never stale. Falls back to a synchronous run if the
+  // worker can't be created.
+  let worker: Worker | null = null;
+  try {
+    worker = new Worker(new URL("../engine/pipeline.worker.ts", import.meta.url), { type: "module" });
+  } catch {
+    worker = null;
+  }
+  let busy = false;       // a run is in flight
+  let pending = false;    // a newer run was requested while busy
+  let reqId = 0;
+  let sentSource: typeof store.source = null;
+  let sentMaskVersion = -1;
+
+  function requestRender() {
+    if (!worker) { applyPipelineResult(runPipeline(store.source!, store.stack)); return; }
+    if (busy) { pending = true; return; }
+    if (store.source !== sentSource) {
+      const s = store.source!;
+      worker.postMessage({ type: "source", gray: s.gray, r: s.r, g: s.g, b: s.b, w: s.w, h: s.h });
+      sentSource = store.source;
+    }
+    if (getMasksVersion() !== sentMaskVersion) {
+      worker.postMessage({ type: "masks", masks: allMasks() });
+      sentMaskVersion = getMasksVersion();
+    }
+    busy = true;
+    worker.postMessage({ type: "run", reqId: ++reqId, stack: store.serialize() });
+  }
+
+  if (worker) {
+    worker.onmessage = (e: MessageEvent) => {
+      const msg = e.data;
+      if (msg?.type !== "result") return;
+      busy = false;
+      if (store.source && !showSource) {
+        const gray: Float32Array = msg.gray;
+        let terminal;
+        if (msg.terminal) {
+          const f = getFilter(msg.terminal.filterId);
+          terminal = f?.render?.(gray, msg.w, msg.h, msg.terminal.params);
+        }
+        applyPipelineResult({ gray, w: msg.w, h: msg.h, terminal });
+      }
+      if (pending) { pending = false; requestRender(); }
+    };
+  }
+
+  function redraw() {
+    if (!store.source) { drawPlaceholder(); return; }
+    if (store.source !== lastSource) { lastSource = store.source; resetView(); }
+    if (showSource) { drawSource(); applyTransform(); return; }
+    requestRender();
   }
 
   // ---- left panel: filter browser, grouped by category (static) ----
@@ -165,12 +336,75 @@ export function mountApp(root: HTMLElement): void {
     color: "COLOR", tone: "TONE", signal: "SIGNAL FX", dither: "DITHER",
     screen: "SCREENS", geometry: "GEOMETRY", disrupt: "DISRUPTORS", ascii: "ASCII",
   };
+  // hidden file input for importing a preset file
+  const presetFileInput = document.createElement("input");
+  presetFileInput.type = "file";
+  presetFileInput.accept = "application/json,.json";
+  presetFileInput.style.display = "none";
+  presetFileInput.addEventListener("change", async () => {
+    const f = presetFileInput.files?.[0];
+    presetFileInput.value = ""; // allow re-importing the same file
+    if (!f) return;
+    const merged = importUserPresets(await f.text());
+    if (merged) renderLeft();
+    else alert("Could not read that preset file.");
+  });
+  root.appendChild(presetFileInput);
+
+  function saveCurrentStack() {
+    if (!store.stack.length) { alert("The stack is empty — add a filter first."); return; }
+    const name = prompt("Save this stack as:")?.trim();
+    if (!name) return;
+    saveUserPreset(name, store.serialize());
+    renderLeft();
+  }
+
+  // live filter-browser search; kept across re-renders, applied without a rebuild so focus survives
+  let filterQuery = "";
+
+  // a filter chip: click to add, star to favourite. Tagged for the search filter.
+  function filterChip(f: Filter): HTMLButtonElement {
+    const b = btn(f.name.toUpperCase(), "chip filter-chip", () => store.addFilter(f.id));
+    b.textContent = "";
+    b.dataset.name = f.name.toLowerCase();
+    b.dataset.cat = (CATEGORY_LABELS[f.category] ?? f.category).toLowerCase();
+    const label = el("span", "chip-label");
+    label.textContent = f.name.toUpperCase();
+    const isFav = loadFavourites().includes(f.id);
+    const star = el("span", `star${isFav ? " on" : ""}`);
+    star.textContent = isFav ? "★" : "☆";
+    star.title = isFav ? "Remove from favourites" : "Add to favourites";
+    star.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFavourite(f.id);
+      renderLeft();
+    });
+    b.append(label, star);
+    return b;
+  }
+
+  // hide chips/sections that don't match the query (no rebuild → search keeps focus)
+  function filterBrowser() {
+    const q = filterQuery.trim().toLowerCase();
+    left.querySelectorAll<HTMLElement>(".browse-section").forEach((section) => {
+      let any = false;
+      section.querySelectorAll<HTMLElement>(".filter-chip").forEach((chip) => {
+        const match = !q || (chip.dataset.name ?? "").includes(q) || (chip.dataset.cat ?? "").includes(q);
+        chip.style.display = match ? "" : "none";
+        if (match) any = true;
+      });
+      section.style.display = any ? "" : "none";
+    });
+  }
+
   function renderLeft() {
     left.innerHTML = "";
 
     // one-click starter presets
     const pre = el("section", "panel");
-    pre.appendChild(heading("PRESETS"));
+    const ph = heading("PRESETS");
+    ph.appendChild(btn("RANDOM", "mini", () => store.setStack(randomStack())));
+    pre.appendChild(ph);
     const pgrid = el("div", "palette two");
     for (const preset of STARTER_PRESETS) {
       pgrid.appendChild(btn(preset.name.toUpperCase(), "chip", () => store.setStack(preset.items)));
@@ -178,22 +412,71 @@ export function mountApp(root: HTMLElement): void {
     pre.appendChild(pgrid);
     left.appendChild(pre);
 
+    // user presets: save the current stack, apply / delete saved ones, import / export
+    const mine = el("section", "panel");
+    const mh = heading("MY PRESETS");
+    mh.appendChild(btn("SAVE", "mini", saveCurrentStack));
+    const userPresets = loadUserPresets();
+    if (userPresets.length) mh.appendChild(btn("EXPORT", "mini", () => downloadText(exportUserPresets(userPresets), "mono-presets.json", "application/json")));
+    mh.appendChild(btn("IMPORT", "mini", () => presetFileInput.click()));
+    mine.appendChild(mh);
+    if (!userPresets.length) {
+      const empty = el("p", "empty");
+      empty.textContent = "Save the current stack to reuse it later.";
+      mine.appendChild(empty);
+    } else {
+      for (const preset of userPresets) {
+        const row = el("div", "preset-row");
+        const apply = btn(preset.name, "chip", () => store.setStack(preset.items));
+        apply.title = `Apply "${preset.name}"`;
+        const del = iconBtn("✕", `Delete "${preset.name}"`, () => {
+          if (confirm(`Delete preset "${preset.name}"?`)) { deleteUserPreset(preset.name); renderLeft(); }
+        });
+        row.append(apply, del);
+        mine.appendChild(row);
+      }
+    }
+    left.appendChild(mine);
+
+    // search box over the (long) filter list
+    const searchPanel = el("section", "panel");
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "search";
+    search.placeholder = "Search filters…";
+    search.value = filterQuery;
+    search.addEventListener("input", () => { filterQuery = search.value; filterBrowser(); });
+    searchPanel.appendChild(search);
+    left.appendChild(searchPanel);
+
+    // favourites pinned at the top
+    const favs = loadFavourites();
+    if (favs.length) {
+      const favSect = el("section", "panel browse-section");
+      favSect.appendChild(heading("★ FAVOURITES"));
+      const grid = el("div", "palette");
+      for (const id of favs) {
+        const f = getFilter(id);
+        if (f) grid.appendChild(filterChip(f));
+      }
+      favSect.appendChild(grid);
+      left.appendChild(favSect);
+    }
+
     const seen = new Set<string>();
     for (const f of FILTERS) {
       if (!seen.has(f.category)) {
         seen.add(f.category);
-        const sect = el("section", "panel");
+        const sect = el("section", "panel browse-section");
         sect.appendChild(heading(CATEGORY_LABELS[f.category] ?? f.category.toUpperCase()));
         const grid = el("div", "palette");
-        for (const g of FILTERS.filter((x) => x.category === f.category)) {
-          const b = btn(g.name.toUpperCase(), "chip", () => store.addFilter(g.id));
-          b.dataset.cat = g.category;
-          grid.appendChild(b);
-        }
+        for (const g of FILTERS.filter((x) => x.category === f.category)) grid.appendChild(filterChip(g));
         sect.appendChild(grid);
         left.appendChild(sect);
       }
     }
+
+    filterBrowser(); // apply the current query to the freshly built list
   }
 
   // ---- right panel: the active stack ----

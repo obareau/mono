@@ -23,6 +23,8 @@ if (saved && saved.length) {
   store.addFilter("tone");
   store.addFilter("error-diffusion");
 }
+// The restored/default stack is the baseline — undo shouldn't peel it away on a fresh load.
+store.resetHistory();
 
 // Autosave the working stack (debounced) so it survives reloads.
 let saveTimer = 0;

@@ -10,6 +10,7 @@ export interface MaskData {
 }
 
 let counter = 1;
+let version = 0; // bumps whenever the set changes, so the worker can resync lazily
 const masks = new Map<string, MaskData>();
 
 export function getMask(id: string): MaskData | undefined {
@@ -19,7 +20,24 @@ export function getMask(id: string): MaskData | undefined {
 export function addMask(name: string, data: Float32Array, w: number, h: number): string {
   const id = "m" + counter++;
   masks.set(id, { name, data, w, h });
+  version++;
   return id;
+}
+
+export function getMasksVersion(): number {
+  return version;
+}
+
+/** Snapshot all masks (with their ids) for shipping to the worker. */
+export function allMasks(): { id: string; name: string; w: number; h: number; data: Float32Array }[] {
+  return [...masks.entries()].map(([id, m]) => ({ id, name: m.name, w: m.w, h: m.h, data: m.data }));
+}
+
+/** Worker side: replace the mask set with one received from the main thread. */
+export function setMasks(list: { id: string; name: string; w: number; h: number; data: Float32Array }[]): void {
+  masks.clear();
+  for (const m of list) masks.set(m.id, { name: m.name, w: m.w, h: m.h, data: m.data });
+  version++;
 }
 
 export async function loadMaskFile(file: File, maxDim = 512): Promise<string> {
