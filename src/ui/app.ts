@@ -50,9 +50,22 @@ export function mountApp(root: HTMLElement): void {
 
   const side = el("aside", "sidebar");
 
+  // mobile tab bar — CSS reveals it only on narrow screens; toggles which panel is shown
+  // while the canvas stays pinned above. On desktop both panels are always visible.
+  const tabs = el("div", "mobile-tabs");
+  const tabFilters = btn("FILTERS", "tab", () => setTab("filters"));
+  const tabStack = btn("STACK", "tab", () => setTab("stack"));
+  tabs.append(tabFilters, tabStack);
+  function setTab(t: "filters" | "stack") {
+    main.dataset.tab = t;
+    tabFilters.classList.toggle("on", t === "filters");
+    tabStack.classList.toggle("on", t === "stack");
+  }
+
   main.appendChild(left);
   main.appendChild(stage);
   main.appendChild(side);
+  main.appendChild(tabs);
   root.appendChild(header);
   root.appendChild(main);
 
@@ -561,12 +574,18 @@ export function mountApp(root: HTMLElement): void {
     side.appendChild(stackPanel);
   }
 
+  function updateStackTab() {
+    tabStack.textContent = store.stack.length ? `STACK · ${store.stack.length}` : "STACK";
+  }
   store.subscribe(() => {
     renderSidebar();
+    updateStackTab();
     redraw();
   });
   store.subscribeRender(() => redraw());
 
+  setTab("filters");
+  updateStackTab();
   renderLeft();
   renderSidebar();
   redraw();

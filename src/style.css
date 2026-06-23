@@ -399,19 +399,41 @@ select { cursor: pointer; }
 }
 ::-webkit-scrollbar-track { background: var(--win); border-left: 1px solid var(--platinum-sh); }
 
-/* ---- phones & tablets: stack the three panels, canvas first ---- */
+/* mobile tab bar — hidden on desktop, where both panels are always visible */
+.mobile-tabs { display: none; }
+
+/* ---- phones & tablets: pin the canvas on top, panels behind a Filters/Stack tab bar ---- */
 @media (max-width: 860px) {
-  .topbar { flex-wrap: wrap; height: auto; padding: 6px 10px; gap: 8px 12px; }
-  .topbar-right { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  .topbar { flex-wrap: wrap; height: auto; padding: 6px 10px; gap: 6px 10px; }
+  .topbar .tag { display: none; } /* reclaim width */
+  .topbar-right { width: 100%; margin-left: 0; flex-wrap: wrap; gap: 6px; }
+  .topbar-right .btn { padding: 4px 9px; }
+
   .layout { flex-direction: column; }
-  .stage { order: -1; min-height: 46vh; padding: 14px; }
-  .output { max-width: 92vw; max-height: 42vh; }
-  .panel-left, .sidebar {
-    width: auto;
-    border: none;
-    border-top: 1px solid var(--ink);
-    max-height: none;
+
+  /* canvas stays visible at the top */
+  .stage { order: 0; flex: none; height: 42vh; padding: 12px; }
+  .output { max-width: 92vw; max-height: 34vh; }
+
+  /* tab bar sits just under the canvas */
+  .mobile-tabs {
+    order: 1; display: flex; flex: none;
+    border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink);
+    background: var(--platinum);
   }
-  .panel-left .palette { grid-template-columns: 1fr 1fr; }
-  .panel-left .btn.chip { text-align: center; }
+  .mobile-tabs .btn.tab {
+    flex: 1; border: none; border-radius: 0; padding: 10px; font-size: 11px;
+    background: var(--platinum); color: var(--ink);
+  }
+  .mobile-tabs .btn.tab + .btn.tab { border-left: 1px solid var(--platinum-sh); }
+  .mobile-tabs .btn.tab.on { background: var(--blue-bg); box-shadow: inset 0 -3px 0 var(--blue); }
+  .mobile-tabs .btn.tab:active { background: var(--blue-bg); color: var(--ink); }
+
+  /* the two panels fill the rest; only the active one is shown */
+  .panel-left, .sidebar {
+    order: 2; width: auto; flex: 1 1 auto; min-height: 0;
+    border: none; max-height: none;
+  }
+  .layout[data-tab="filters"] .sidebar { display: none; }
+  .layout[data-tab="stack"] .panel-left { display: none; }
 }
