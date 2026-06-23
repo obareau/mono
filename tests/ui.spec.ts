@@ -91,6 +91,25 @@ test("export PNG downloads mono.png", async ({ page }) => {
   expect(download.suggestedFilename()).toBe("mono.png");
 });
 
+test("dragging a slider drops to a low-res preview, then restores to full", async ({ page }) => {
+  await loadImage(page);
+  const widthOf = () => page.locator("canvas.output").evaluate((c) => (c as HTMLCanvasElement).width);
+  const full = await widthOf();
+  expect(full).toBeGreaterThan(512); // demo is 1024 wide; low tier caps at 512
+
+  // fire a burst of slider inputs to simulate a drag
+  const slider = page.locator(".sidebar input[type=range]").first();
+  for (let i = 0; i < 6; i++) {
+    await slider.evaluate((el: HTMLInputElement, v) => {
+      el.value = String(v);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }, 0.3 + i * 0.05);
+  }
+
+  await expect.poll(widthOf).toBeLessThanOrEqual(512);          // low-res while interacting
+  await expect.poll(widthOf, { timeout: 2000 }).toBe(full);     // full-res after it settles
+});
+
 test("export SVG downloads mono.svg when a vector filter is present", async ({ page }) => {
   await loadImage(page);
   await page.locator(".panel-left .filter-chip", { hasText: "Halftone" }).first().click();

@@ -43,6 +43,19 @@ export interface BufferResult {
   terminal?: { filterId: string; params: ParamValues };
 }
 
+// Apply a single stack item to the running gray buffer. Returns the next buffer, or a
+// terminal marker if this item ends the chain (ASCII). Shared by the pure runner and the
+// worker's cached runner so the per-item logic lives in one place.
+export type ItemResult = { gray: Gray } | { terminal: { filterId: string; params: ParamValues } };
+export function applyStackItem(source: PipelineSource, gray: Gray, item: StackEntry): ItemResult {
+  if (!item.enabled) return { gray };
+  const filter = getFilter(item.filterId);
+  if (!filter) return { gray };
+  if (filter.fromRGB) return { gray: filter.fromRGB(source.r, source.g, source.b, source.w, source.h, item.params) };
+  if (filter.terminal && filter.render) return { terminal: { filterId: item.filterId, params: item.params } };
+  return { gray: applyItem(filter, gray, source.w, source.h, item) };
+}
+
 // Runs the stack top-to-bottom over a copy of the source buffer — pure, DOM-free, so it
 // runs in the Web Worker. A colour filter re-derives grayscale from the source RGB; a
 // terminal filter (ASCII) ends the chain and is reported as a marker, not rendered here.
@@ -50,17 +63,9 @@ export function runPipelineBuffer(source: PipelineSource, stack: StackEntry[]): 
   const { w, h } = source;
   let gray: Gray = new Float32Array(source.gray);
   for (const item of stack) {
-    if (!item.enabled) continue;
-    const filter = getFilter(item.filterId);
-    if (!filter) continue;
-    if (filter.fromRGB) {
-      gray = filter.fromRGB(source.r, source.g, source.b, w, h, item.params);
-      continue;
-    }
-    if (filter.terminal && filter.render) {
-      return { gray, w, h, terminal: { filterId: item.filterId, params: item.params } };
-    }
-    gray = applyItem(filter, gray, w, h, item);
+    const r = applyStackItem(source, gray, item);
+    if ("terminal" in r) return { gray, w, h, terminal: r.terminal };
+    gray = r.gray;
   }
   return { gray, w, h };
 }
