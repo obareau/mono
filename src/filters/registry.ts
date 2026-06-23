@@ -17,8 +17,10 @@ import { stipple } from "./stipple";
 import { hatch } from "./hatch";
 import { contour } from "./contour";
 import { xdog } from "./xdog";
+import { sobel } from "./sobel";
 import { gravure } from "./gravure";
 import { mezzotint } from "./mezzotint";
+import { reactionDiffusion } from "./reactionDiffusion";
 import { GEOMETRY } from "./geometry";
 import { truchet } from "./truchet";
 import { circlePack } from "./circlePack";
@@ -49,7 +51,9 @@ export const FILTERS: Filter[] = [
   hatch,
   contour,
   xdog,
+  sobel,
   gravure,
+  reactionDiffusion,
   ...GEOMETRY,
   truchet,
   circlePack,

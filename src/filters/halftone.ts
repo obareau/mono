@@ -21,7 +21,7 @@ export const halftone: Filter = {
   params: [
     { key: "cell", label: "Cell size", type: "range", default: 6, min: 2, max: 24, step: 1 },
     { key: "angle", label: "Angle", type: "range", default: 45, min: 0, max: 90, step: 1 },
-    { key: "shape", label: "Shape", type: "select", default: "dot", options: ["dot", "square", "line"] },
+    { key: "shape", label: "Shape", type: "select", default: "dot", options: ["dot", "square", "diamond", "ellipse", "line"] },
     { key: "sharp", label: "Sharpness", type: "range", default: 0.5, min: 0, max: 1, step: 0.01 },
   ],
   apply(gray, w, h, p) {
@@ -57,6 +57,15 @@ export const halftone: Filter = {
         if (shape === "square") {
           const r = (ink * cell) / 2;
           coverage = Math.abs(fu) <= r && Math.abs(fv) <= r ? 1 : 0;
+        } else if (shape === "diamond") {
+          // L1 ("taxicab") disc — a rotated square that grows on its diagonals
+          const r = ink * cell * 0.72;
+          coverage = Math.abs(fu) + Math.abs(fv) <= r ? 1 : 0;
+        } else if (shape === "ellipse") {
+          // elongated dot (classic newspaper screen) — wider on u than v
+          const rad = Math.sqrt(ink) * cell * 0.62;
+          const du = fu / 1.4, dv = fv * 1.4;
+          coverage = Math.sqrt(du * du + dv * dv) <= rad ? 1 : 0;
         } else if (shape === "line") {
           const r = (ink * cell) / 2;
           coverage = Math.abs(fv) <= r ? 1 : 0;

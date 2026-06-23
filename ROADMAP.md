@@ -1,7 +1,7 @@
 # Roadmap
 
 **Status — v1 shipped.** Tier 1 + Tier 2 done, all ongoing filters shipped, and a product
-pass (PWA, social preview, mobile). MONO° has **42 filters**, exports PNG/SVG/PDF/TXT/HTML,
+pass (PWA, social preview, mobile). MONO° has **45 filters**, exports PNG/SVG/PDF/TXT/HTML,
 shareable stacks, and is live at <https://obareau.github.io/mono/>.
 
 ---
@@ -51,10 +51,14 @@ to use with 42 filters** and **hardening** it. Recommended order: A → B → C,
 
 ## Lane D — new filters (ongoing)
 
-- [ ] Clean Sobel edge detect (thinned) — distinct from XDoG / Contour Shock.
-- [ ] More halftone variants (diamond / line-screen angles).
-- [ ] Image-seeded Voronoi (seed density follows tone).
-- [ ] Reaction-Diffusion, done properly (tuned dt, in the Lane-B worker).
+- [x] Clean Sobel edge detect (thinned) — gradient magnitude + non-maximum suppression +
+      hard threshold; distinct from XDoG / Contour Shock.
+- [x] More halftone variants — added **diamond** (L1 disc) and **ellipse** (newspaper) screen
+      shapes alongside the existing dot/square/line + angle controls.
+- [x] Image-seeded Voronoi (**Voronoi (tone)**) — seed density follows tone (dart-thrown on a
+      fine grid, denser where dark), nearest-seed via spatial hash, cells flat-filled.
+- [x] Reaction-Diffusion (Gray-Scott) — runs on a downscaled grid then upscales, tuned dt /
+      Laplacian, seeded from the image; heavy + iterative, so it lives behind the Lane-B worker.
 
 ---
 

@@ -276,4 +276,78 @@ const voronoiLines: Filter = {
   },
 };
 
-export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate, voronoi, voronoiLines];
+// VORONOI (TONE) — seed density follows the image: dense cells in dark/detailed areas,
+// sparse in light ones. Seeds are dart-thrown on a fine grid with acceptance ∝ local ink;
+// a spatial hash finds each pixel's nearest seed, and cells are flat-filled with mean tone.
+const voronoiTone: Filter = {
+  id: "voronoi-tone",
+  name: "Voronoi (tone)",
+  category: "geometry",
+  params: [
+    { key: "spacing", label: "Min spacing", type: "range", default: 6, min: 3, max: 40, step: 1 },
+    { key: "range", label: "Light ×", type: "range", default: 4, min: 1, max: 10, step: 0.5 },
+    { key: "jitter", label: "Jitter", type: "range", default: 0.7, min: 0, max: 1, step: 0.01 },
+    { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
+  ],
+  apply(gray, w, h, p) {
+    const minS = Math.max(3, Math.round(p.spacing as number));
+    const maxS = minS * (p.range as number);
+    const jit = p.jitter as number;
+    const seed = p.seed as number;
+    const rand = (gx: number, gy: number) => jitter(gx, gy, seed) + 0.5; // 0..1
+
+    // place seeds: denser where dark (low tone)
+    const sxs: number[] = [], sys: number[] = [];
+    const fcols = Math.ceil(w / minS), frows = Math.ceil(h / minS);
+    for (let gy = 0; gy < frows; gy++) {
+      for (let gx = 0; gx < fcols; gx++) {
+        const px = (gx + 0.5) * minS, py = (gy + 0.5) * minS;
+        const t = gray[Math.min(h - 1, py | 0) * w + Math.min(w - 1, px | 0)];
+        const s = minS + (maxS - minS) * t; // dark → minS, light → maxS
+        const ratio = minS / s;
+        if (rand(gx, gy) < ratio * ratio) {
+          sxs.push(px + (rand(gx + 7, gy + 3) - 0.5) * minS * jit);
+          sys.push(py + (rand(gx + 3, gy + 7) - 0.5) * minS * jit);
+        }
+      }
+    }
+    if (sxs.length === 0) { sxs.push(w / 2); sys.push(h / 2); }
+
+    // spatial hash (bucket size = max spacing) for nearest-seed queries
+    const bs = Math.max(2, Math.round(maxS));
+    const bcols = Math.ceil(w / bs), brows = Math.ceil(h / bs);
+    const buckets: number[][] = Array.from({ length: bcols * brows }, () => []);
+    for (let i = 0; i < sxs.length; i++) {
+      const bx = Math.min(bcols - 1, Math.max(0, sxs[i] / bs | 0));
+      const by = Math.min(brows - 1, Math.max(0, sys[i] / bs | 0));
+      buckets[by * bcols + bx].push(i);
+    }
+    const maxRad = Math.max(bcols, brows);
+    const nearest = (x: number, y: number): number => {
+      const bx = Math.min(bcols - 1, x / bs | 0), by = Math.min(brows - 1, y / bs | 0);
+      let best = -1, bd = Infinity;
+      for (let rad = 1; rad <= maxRad; rad++) {
+        for (let yy = Math.max(0, by - rad); yy <= Math.min(brows - 1, by + rad); yy++) {
+          for (let xx = Math.max(0, bx - rad); xx <= Math.min(bcols - 1, bx + rad); xx++) {
+            for (const i of buckets[yy * bcols + xx]) {
+              const dx = x - sxs[i], dy = y - sys[i], d = dx * dx + dy * dy;
+              if (d < bd) { bd = d; best = i; }
+            }
+          }
+        }
+        if (best >= 0 && Math.sqrt(bd) <= rad * bs) break; // no closer seed can exist farther out
+      }
+      return best;
+    };
+
+    const ids = new Int32Array(w * h);
+    const sums = new Float64Array(sxs.length);
+    const counts = new Uint32Array(sxs.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const id = nearest(x, y); ids[y * w + x] = id; sums[id] += gray[y * w + x]; counts[id]++; }
+    const out = new Float32Array(gray.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const id = ids[y * w + x]; out[y * w + x] = counts[id] ? sums[id] / counts[id] : gray[y * w + x]; }
+    return out;
+  },
+};
+
+export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate, voronoi, voronoiLines, voronoiTone];
