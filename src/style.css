@@ -277,8 +277,8 @@ html, body {
 /* ---- filter cards (sub-windows) ---- */
 .fcard { border: 1px solid var(--ink); margin-top: 8px; background: var(--win); box-shadow: 1px 1px 0 rgba(0,0,0,0.2); }
 .fcard.off { opacity: 0.5; }
-.fcard-bar[draggable="true"] { cursor: grab; }
-.fcard-bar[draggable="true"]:active { cursor: grabbing; }
+.fcard-bar { cursor: grab; user-select: none; }
+.fcard.dragging-card .fcard-bar { cursor: grabbing; }
 .fcard.dragging-card { opacity: 0.4; }
 .fcard.drop-target { box-shadow: 0 -2px 0 var(--orange); }
 .fcard.terminal { box-shadow: 0 0 0 1px var(--orange), 1px 1px 0 rgba(0,0,0,0.2); }

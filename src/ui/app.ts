@@ -604,7 +604,7 @@ export function mountApp(root: HTMLElement): void {
   }
 
   // ---- right panel: the active stack ----
-  let touchDragUid: number | null = null; // filter card being dragged by touch
+  let dragUid: number | null = null; // filter card currently being dragged (pointer reorder)
   function renderSidebar() {
     side.innerHTML = "";
 
@@ -629,53 +629,39 @@ export function mountApp(root: HTMLElement): void {
       if (!item.enabled) card.classList.add("off");
       if (f.terminal) card.classList.add("terminal");
 
-      // drag-to-reorder by the title bar only (so body sliders stay interactive)
-      card.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        card.classList.add("drop-target");
-      });
-      card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
-      card.addEventListener("drop", (e) => {
-        e.preventDefault();
-        card.classList.remove("drop-target");
-        const from = Number(e.dataTransfer?.getData("text/plain"));
-        if (from) store.reorder(from, item.uid);
-      });
-
+      // drag-to-reorder by the title bar, via Pointer Events so mouse + touch share one path
+      // (no fragile HTML5 DnD / native snap-back; the drop target is the nearest card so the
+      // gaps between cards work too).
       const bar = el("div", "fcard-bar");
-      bar.draggable = true;
-      bar.addEventListener("dragstart", (e) => {
-        e.dataTransfer?.setData("text/plain", String(item.uid));
+      const clearTargets = () => side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
+      const cardUnder = (x: number, y: number) =>
+        (document.elementFromPoint(x, y) as HTMLElement | null)?.closest(".fcard") as HTMLElement | null;
+      bar.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;     // primary button only
+        if ((e.target as HTMLElement).closest(".fcard-tools")) return; // let the tool buttons work
+        dragUid = item.uid;
         card.classList.add("dragging-card");
+        try { bar.setPointerCapture(e.pointerId); } catch { /* no active pointer (synthetic) */ }
+        e.preventDefault();
       });
-      bar.addEventListener("dragend", () => card.classList.remove("dragging-card"));
-
-      // touch drag-to-reorder (HTML5 DnD above is mouse-only); start on the bar but not its tools
-      bar.addEventListener("touchstart", (e) => {
-        if (e.touches.length !== 1 || (e.target as HTMLElement).closest(".fcard-tools")) return;
-        touchDragUid = item.uid;
-        card.classList.add("dragging-card");
-        e.preventDefault();
-      }, { passive: false });
-      bar.addEventListener("touchmove", (e) => {
-        if (touchDragUid == null) return;
-        e.preventDefault();
-        const t = e.touches[0];
-        const over = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest(".fcard");
-        side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
+      bar.addEventListener("pointermove", (e) => {
+        if (dragUid !== item.uid) return;
+        const over = cardUnder(e.clientX, e.clientY);
+        clearTargets();
         if (over && over !== card) over.classList.add("drop-target");
-      }, { passive: false });
-      bar.addEventListener("touchend", (e) => {
-        if (touchDragUid == null) return;
-        const t = e.changedTouches[0];
-        const over = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest(".fcard") as HTMLElement | null;
-        side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
+      });
+      const endDrag = (e: PointerEvent) => {
+        if (dragUid !== item.uid) return;
+        const over = cardUnder(e.clientX, e.clientY);
+        clearTargets();
         card.classList.remove("dragging-card");
         const toUid = over && over !== card ? Number(over.dataset.uid) : 0;
-        const from = touchDragUid;
-        touchDragUid = null;
-        if (toUid) store.reorder(from, toUid);
-      });
+        dragUid = null;
+        if (toUid) store.reorder(item.uid, toUid);
+      };
+      bar.addEventListener("pointerup", endDrag);
+      bar.addEventListener("pointercancel", endDrag);
+
       const title = el("span", "fcard-title");
       title.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
       bar.appendChild(title);

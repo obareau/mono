@@ -54,6 +54,18 @@ test("touch: one-finger pan moves the canvas", async ({ page }) => {
   expect(await transform()).not.toBe(before);
 });
 
+// Dispatch a touch-type pointer drag (start → move → end) at page coordinates.
+async function pointerDrag(page: import("@playwright/test").Page, selector: string, sx: number, sy: number, tx: number, ty: number) {
+  await page.evaluate(({ selector, sx, sy, tx, ty }) => {
+    const el = document.querySelector(selector) as HTMLElement;
+    const fire = (type: string, x: number, y: number) =>
+      el.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: "touch", isPrimary: true, button: 0, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+    fire("pointerdown", sx, sy);
+    fire("pointermove", tx, ty);
+    fire("pointerup", tx, ty);
+  }, { selector, sx, sy, tx, ty });
+}
+
 test("touch: drag a filter card to reorder the stack", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /STACK/ }).click();
@@ -64,7 +76,7 @@ test("touch: drag a filter card to reorder the stack", async ({ page }) => {
 
   const bar = (await page.locator(".sidebar .fcard-bar").first().boundingBox())!;
   const second = (await page.locator(".sidebar .fcard").nth(1).boundingBox())!;
-  await touchDrag(
+  await pointerDrag(
     page, ".sidebar .fcard-bar",
     bar.x + bar.width / 2, bar.y + bar.height / 2,
     second.x + second.width / 2, second.y + second.height / 2,

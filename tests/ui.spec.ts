@@ -34,6 +34,23 @@ test("adding a filter grows the stack; undo and redo revert and reapply", async 
   await expect(count).toContainText("STACK · 3");
 });
 
+test("reordering a filter by dragging its title bar sticks (and survives reload)", async ({ page }) => {
+  const titles = page.locator(".sidebar .fcard-title");
+  await expect(titles).toHaveCount(2);
+  const before = await titles.allInnerTexts();
+
+  const bar0 = (await page.locator(".sidebar .fcard-bar").nth(0).boundingBox())!;
+  const card1 = (await page.locator(".sidebar .fcard").nth(1).boundingBox())!;
+  await page.mouse.move(bar0.x + bar0.width / 2, bar0.y + bar0.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(card1.x + card1.width / 2, card1.y + card1.height / 2, { steps: 8 });
+  await page.mouse.up();
+
+  await expect(titles.first()).not.toHaveText(before[0]); // order changed in-session
+  await page.reload();
+  await expect(titles.first()).not.toHaveText(before[0]); // and persisted
+});
+
 test("export dialog opens, exposes a format select, and closes", async ({ page }) => {
   await page.getByRole("button", { name: /EXPORT/ }).click();
   await expect(page.locator(".modal-title")).toHaveText("EXPORT");

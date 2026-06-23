@@ -26,11 +26,12 @@ if (saved && saved.length) {
 // The restored/default stack is the baseline — undo shouldn't peel it away on a fresh load.
 store.resetHistory();
 
-// Autosave the working stack (debounced) so it survives reloads.
+// Autosave the working stack so it survives reloads. Structural changes (add/remove/reorder/
+// toggle) save immediately so a quick reload can't lose them; slider drags are debounced.
 let saveTimer = 0;
 store.subscribe(() => {
   clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => saveLocal(store.serialize()), 400);
+  saveLocal(store.serialize());
 });
 store.subscribeRender(() => {
   clearTimeout(saveTimer);
