@@ -84,15 +84,16 @@ Then drop, paste, or open an image.
 
 ## Architecture
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md). In short: `source image → grayscale buffer →
-[filter stack] → output`. Filters are pure transforms on a `Float32Array` (values 0..1);
-error-diffusion is intentionally CPU/sequential, screens are per-pixel and GPU-ready for later.
+See [ARCHITECTURE.md](./ARCHITECTURE.md). In short: `source (RGB + luma) → grayscale buffer →
+[filter stack] → output`. Filters are transforms on a `Float32Array` (values 0..1) with up to
+four capabilities (`apply` / `fromRGB` / `render` / `toVector`); the engine is deliberately
+CPU (error-diffusion can't be a shader), fast enough without a GPU rewrite.
 
 ## Roadmap
 
-See [ROADMAP.md](./ROADMAP.md). Tier 1 (live deploy, full-resolution export, shareable
-presets) and Tier 2 (SVG/PDF vector export) are done; ongoing work adds more screens and
-geometry filters. MONO° stays a still-image tool — motion lives in terminal-synth.
+See [ROADMAP.md](./ROADMAP.md). **v1 shipped** — Tier 1 (live deploy, native-res export,
+shareable presets), Tier 2 (SVG/PDF vector export), all ongoing filters, and a product pass
+(PWA, social preview, mobile). MONO° stays a still-image tool — motion lives in terminal-synth.
 
 ## License
 

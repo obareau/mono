@@ -8,72 +8,91 @@ Everything is a single chain:
 source image ──► grayscale buffer ──► [ filter · filter · filter … ] ──► output
 ```
 
-- **Grayscale buffer**: a `Float32Array` of length `w*h`, each value in `[0,1]`
-  (`0` = black, `1` = white). This is the only currency the filters speak.
-- Tonal/screen/dither filters **transform** the buffer.
-- Dithering filters **collapse** it to exactly `0` or `1`.
-- A **terminal** filter (ASCII) doesn't emit pixels — it renders its own representation
-  and ends the chain.
+- **Source**: decoded once into separate R/G/B planes **and** a default luma `gray`, plus the
+  original `ImageBitmap` (kept for full-resolution export). All downscaled so the long edge ≤
+  1024px for a responsive live preview.
+- **Grayscale buffer**: a `Float32Array` of length `w*h`, each value in `[0,1]` (`0` = black,
+  `1` = white). This is the currency every filter speaks.
+- Tonal / screen / dither filters **transform** the buffer; dithering filters **collapse** it
+  to exactly `0` or `1`.
+- Each stack item has an **opacity (Mix)**: when `< 1`, the pipeline blends the filter's
+  result back toward its input.
 
-## Three families of filters
+## What a filter can be
 
-This split is the central design decision. The three kinds compute very differently:
+A `Filter` is data + up to four optional capabilities (see `filters/types.ts`):
 
-| Kind | Examples | Nature | Where it runs today | Future |
-|------|----------|--------|---------------------|--------|
-| **Per-pixel** | Threshold, Bayer, Halftone, Offset, Tone | each output pixel independent | CPU buffer pass | trivially portable to a WebGL2 fragment shader |
-| **Sequential** | Floyd-Steinberg, Atkinson | each pixel's error feeds *unprocessed* neighbours | CPU, in scan order | stays CPU (a Web Worker) — **cannot** be a GPU shader |
-| **Terminal** | ASCII | produces glyphs/vectors, not a bitmap | own `draw()` | SVG/PDF emit path |
+| Capability | Signature | Used by | Output |
+|------------|-----------|---------|--------|
+| **`apply`** | `(gray, w, h, params) → gray` | most filters | transformed grayscale buffer |
+| **`fromRGB`** | `(r, g, b, w, h, params) → gray` | Color Filter | (re)derives gray from the source RGB — photographic B&W filters |
+| **`render`** | `(gray, w, h, params) → TerminalRender` | ASCII | draws its own canvas; also `text()` / `html()` for `.txt` / `.html` export |
+| **`toVector`** | `(gray, w, h, params) → VectorScene` | Halftone, Clustered Dot, Concentric, Stipple, Circle Pack, Hatch | resolution-independent primitives for SVG / PDF |
 
-Mislabelling error-diffusion as GPU-able is the classic trap; it's explicit here.
+The two computational families still matter: **per-pixel** filters (threshold, screens,
+geometry, warps) are independent per output pixel, while **sequential** error-diffusion
+(Floyd-Steinberg, Atkinson, Ostromoukhov, Riemersma…) feeds each pixel's quantization error
+into *unprocessed* neighbours and so must run in scan order. The latter is the reason the
+engine is intentionally CPU, not GPU (see below).
 
 ## Modules
 
 ```
 src/
   filters/
-    types.ts          Filter interface + declarative ParamDef (drives the UI)
-    registry.ts       single source of truth — list a filter here, it appears in the UI
-    tone.ts           brightness / contrast / gamma / invert
-    threshold.ts      hard 1-bit cut
-    floydSteinberg.ts error diffusion (Floyd-Steinberg + Atkinson), serpentine
-    bayer.ts          ordered dithering, recursive Bayer matrix
-    halftone.ts       rotated dot/square/line screen
-    offset.ts         echo misregistration + sliced scan-shift
-    ascii.ts          terminal: glyph grid from a user-supplied ramp string
+    types.ts        Filter interface, ParamDef (drives the UI), Gray / VecPrim / VectorScene
+    registry.ts     single source of truth — list a filter here, it appears in the UI
+    *.ts            ~42 filters grouped by category: color, tone, signal, dither,
+                    screen, geometry, disrupt, offset, ascii
+                    (some export arrays: signalFx, geometry, disruptors)
   engine/
-    pipeline.ts       runs the stack top-to-bottom; stops at a terminal filter
+    pipeline.ts     runPipeline (stack → result), runToVector (stack → SVG/PDF scene),
+                    per-item opacity blend, terminal short-circuit
   io/
-    loadImage.ts      decode → luma → downscaled Float32Array
-    render.ts         buffer → 1-bit canvas; terminal → its own draw; PNG export
+    loadImage.ts    decode → R/G/B + luma + kept bitmap, downscaled
+    render.ts       buffer → 1-bit canvas; terminal → its own draw; PNG export
+    vector.ts       VectorScene → SVG and dependency-free PDF (circles as Béziers)
+    presets.ts      stack ⇄ compact JSON; URL #s= hash + localStorage; starter presets
+    maskStore.ts    in-memory dither masks for the Threshold Map filter
+    demo.ts         first-load demo image (bundled splash, procedural fallback)
   state/
-    store.ts          observable store (source + filter stack); mutation → re-render
+    store.ts        observable store; structural vs value notifications so slider drags
+                    don't rebuild the sidebar
   ui/
-    app.ts            layout, file I/O (open/drop/paste), render loop
-    controls.ts       builds a control row from a ParamDef — zero per-filter UI code
-  main.ts             bootstrap + seed default stack
+    app.ts          three-panel layout, file/drag/paste I/O, exports, render
+    controls.ts     builds a control row from a ParamDef (incl. a "mask" loader) — no
+                    per-filter UI code
+  main.ts           bootstrap: restore stack (URL → localStorage → default), load demo
 ```
 
 ## Data-driven UI
 
-A filter declares its parameters:
+A filter declares its parameters; `controls.ts` reads them and emits the right
+slider / toggle / select / text / mask control. Adding a filter is: write the transform,
+declare its `params`, register it — **zero UI wiring**. The interface is a three-panel
+Lightroom layout (filter browser left, canvas centre, stack right) with drag-to-reorder and
+a per-filter Mix slider.
 
-```ts
-params: [
-  { key: "level", label: "Level", type: "range", default: 0.5, min: 0, max: 1, step: 0.01 },
-  { key: "kernel", label: "Kernel", type: "select", default: "Floyd-Steinberg",
-    options: ["Floyd-Steinberg", "Atkinson"] },
-]
-```
+## Output paths
 
-`controls.ts` reads that and emits the right slider / toggle / select / text input. So the
-path to "150 filters" is: write the transform, declare its params, register it. No UI wiring.
+- **PNG** — re-runs the whole stack at the source's **native** resolution (from the kept
+  bitmap, capped 4096), so the preview stays fast but exports stay sharp.
+- **SVG / PDF** — `runToVector` runs the stack up to the last vector-capable filter, then
+  serializes its primitives (dependency-free writers).
+- **TXT / HTML** — the ASCII terminal's `text()` / `html()`.
+- **Share** — the filter stack (with params + opacity) is encoded into a `#s=` URL hash;
+  it also autosaves to localStorage.
 
-## Why CPU now, GPU later
+## Why CPU, not GPU
 
-Operating on a downscaled `Float32Array` (long edge ≤ 1024px) keeps every filter trivially
-debuggable and exact, and the per-pixel ones already match a shader's math 1:1. When real-time
-full-resolution is needed, the per-pixel family lifts into WebGL2 fragment shaders behind the
-same `Filter` interface; the sequential family moves into a Web Worker. The pipeline contract
-doesn't change.
-```
+Operating on a downscaled `Float32Array` keeps every filter exact and trivially debuggable,
+and sequential error-diffusion *cannot* be a shader anyway. The CPU pipeline is fast enough
+(1024px live preview, native-res export on demand), so a WebGL2 rewrite of ~42 working filters
+isn't worth it. If a deep stack ever feels heavy, the move is to push the pipeline into a Web
+Worker — not the GPU. The `Filter` contract wouldn't change either way.
+
+## Build & delivery
+
+Vite + TypeScript, **zero runtime dependencies** (~20 kB gzip). `vite-plugin-pwa` (build-time)
+adds an offline service worker + web manifest, so MONO° is an installable PWA. A GitHub Actions
+workflow builds and deploys to GitHub Pages on every push to `main`.
