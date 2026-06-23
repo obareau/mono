@@ -380,8 +380,6 @@ export function mountApp(root: HTMLElement): void {
   let reqId = 0;
   let sentSource: typeof store.source = null;
   let sentMaskVersion = -1;
-  let quality: "low" | "high" = "high"; // "low" while dragging a slider (faster preview)
-  let interactTimer: ReturnType<typeof setTimeout> | null = null;
   const RENDER_FAIL = "Render failed — check that filter's settings";
 
   // run the stack synchronously on the main thread (worker fallback), guarding throws
@@ -407,7 +405,7 @@ export function mountApp(root: HTMLElement): void {
       sentMaskVersion = getMasksVersion();
     }
     busy = true;
-    worker.postMessage({ type: "run", reqId: ++reqId, stack: store.serialize(), quality });
+    worker.postMessage({ type: "run", reqId: ++reqId, stack: store.serialize() });
   }
 
   if (worker) {
@@ -449,15 +447,6 @@ export function mountApp(root: HTMLElement): void {
     if (store.source !== lastSource) { lastSource = store.source; resetView(); }
     if (showSource) { drawSource(); applyTransform(); return; }
     requestRender();
-  }
-
-  // Value changes (slider drags) render the fast low-res tier; once the drag settles for a
-  // moment, re-render at full quality.
-  function redrawInteractive() {
-    quality = "low";
-    redraw();
-    if (interactTimer) clearTimeout(interactTimer);
-    interactTimer = setTimeout(() => { quality = "high"; redraw(); }, 200);
   }
 
   // ---- left panel: filter browser, grouped by category (static) ----
@@ -761,21 +750,12 @@ export function mountApp(root: HTMLElement): void {
   function updateStackTab() {
     tabStack.textContent = store.stack.length ? `STACK · ${store.stack.length}` : "STACK";
   }
-  // store.emit() (structural) fires the render listeners too, so flag structural ticks to
-  // keep the interactive (low-res) path for genuine value changes only.
-  let structuralTick = false;
   store.subscribe(() => {
     renderSidebar();
     updateStackTab();
-    quality = "high"; // structural changes always render at full quality
     redraw();
-    structuralTick = true;
-    queueMicrotask(() => { structuralTick = false; });
   });
-  store.subscribeRender(() => {
-    if (structuralTick) return; // already rendered at full quality by the structural handler
-    redrawInteractive();
-  });
+  store.subscribeRender(() => redraw());
 
   setTab("filters");
   updateStackTab();
