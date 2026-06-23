@@ -43,7 +43,9 @@ export interface TerminalRender {
 export type VecPrim =
   | { t: "circle"; cx: number; cy: number; r: number }
   | { t: "rect"; x: number; y: number; w: number; h: number }
-  | { t: "line"; x1: number; y1: number; x2: number; y2: number; sw: number };
+  | { t: "line"; x1: number; y1: number; x2: number; y2: number; sw: number }
+  | { t: "ellipse"; cx: number; cy: number; rx: number; ry: number; rot: number } // rot in radians
+  | { t: "poly"; pts: number[] }; // filled polygon, flattened [x0,y0,x1,y1,...]
 
 export interface VectorScene {
   w: number;

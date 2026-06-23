@@ -18,6 +18,8 @@ export function sceneToSVG(scene: VectorScene, style?: InkStyle): string {
   for (const p of prims) {
     if (p.t === "circle") out.push(`<circle cx="${f(p.cx)}" cy="${f(p.cy)}" r="${f(p.r)}"/>`);
     else if (p.t === "rect") out.push(`<rect x="${f(p.x)}" y="${f(p.y)}" width="${f(p.w)}" height="${f(p.h)}"/>`);
+    else if (p.t === "ellipse") out.push(`<ellipse cx="${f(p.cx)}" cy="${f(p.cy)}" rx="${f(p.rx)}" ry="${f(p.ry)}" transform="rotate(${f(p.rot * 180 / Math.PI)} ${f(p.cx)} ${f(p.cy)})"/>`);
+    else if (p.t === "poly") out.push(`<polygon points="${polyPoints(p.pts)}"/>`);
     else out.push(`<line x1="${f(p.x1)}" y1="${f(p.y1)}" x2="${f(p.x2)}" y2="${f(p.y2)}" stroke-width="${f(p.sw)}"/>`);
   }
   out.push(`</g></svg>`);
@@ -30,6 +32,32 @@ function rgb01(hex: string): string {
   return `${f(r / 255)} ${f(g / 255)} ${f(b / 255)}`;
 }
 
+// SVG polygon "points" attribute from a flattened pts array.
+function polyPoints(pts: number[]): string {
+  const out: string[] = [];
+  for (let i = 0; i < pts.length; i += 2) out.push(`${f(pts[i])},${f(pts[i + 1])}`);
+  return out.join(" ");
+}
+
+// Approximate a rotated ellipse as a polygon (segments) — used by the PDF writer.
+function ellipsePoly(cx: number, cy: number, rx: number, ry: number, rot: number, segs = 28): number[] {
+  const pts: number[] = [];
+  const cosR = Math.cos(rot), sinR = Math.sin(rot);
+  for (let i = 0; i < segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    const ex = Math.cos(a) * rx, ey = Math.sin(a) * ry;
+    pts.push(cx + ex * cosR - ey * sinR, cy + ex * sinR + ey * cosR);
+  }
+  return pts;
+}
+
+// A filled polygon path in PDF (points already in PDF bottom-left space).
+function polyPath(pts: number[]): string {
+  let s = `${f(pts[0])} ${f(pts[1])} m`;
+  for (let i = 2; i < pts.length; i += 2) s += ` ${f(pts[i])} ${f(pts[i + 1])} l`;
+  return s + " h f";
+}
+
 // Draw the scene's marks in image-local coordinates with a bottom-left origin (PDF space).
 function buildMarks(scene: VectorScene): string {
   const { h, prims } = scene;
@@ -38,6 +66,8 @@ function buildMarks(scene: VectorScene): string {
   for (const p of prims) {
     if (p.t === "circle") cs.push(circlePath(p.cx, fy(p.cy), p.r) + " f");
     else if (p.t === "rect") cs.push(`${f(p.x)} ${f(fy(p.y + p.h))} ${f(p.w)} ${f(p.h)} re f`);
+    else if (p.t === "ellipse") cs.push(polyPath(ellipsePoly(p.cx, fy(p.cy), p.rx, p.ry, -p.rot)));
+    else if (p.t === "poly") { const fp: number[] = []; for (let i = 0; i < p.pts.length; i += 2) { fp.push(p.pts[i], fy(p.pts[i + 1])); } cs.push(polyPath(fp)); }
     else cs.push(`${f(p.sw)} w ${f(p.x1)} ${f(fy(p.y1))} m ${f(p.x2)} ${f(fy(p.y2))} l S`);
   }
   return cs.join("\n");

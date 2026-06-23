@@ -81,9 +81,10 @@ export const halftone: Filter = {
     }
     return out;
   },
-  // Vector: one dot per screen cell, placed back in image space (a circle is rotation-free).
+  // Vector: one mark per screen cell, the shape matching the raster screen (rotated by angle).
   toVector(gray, w, h, p) {
     const cell = p.cell as number;
+    const shape = p.shape as string;
     const ang = ((p.angle as number) * Math.PI) / 180;
     const cos = Math.cos(ang);
     const sin = Math.sin(ang);
@@ -106,9 +107,28 @@ export const halftone: Filter = {
         const sx = cu * cos + cv * sin + cx;
         const sy = -cu * sin + cv * cos + cy;
         if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue;
-        const ink = 1 - sample(gray, w, h, sx, sy);
-        const r = Math.sqrt(Math.max(0, ink)) * cell * 0.62;
-        if (r > 0.15) prims.push({ t: "circle", cx: sx, cy: sy, r });
+        const ink = Math.max(0, 1 - sample(gray, w, h, sx, sy));
+        if (ink < 0.01) continue;
+        // a screen-space offset (du,dv) maps to image space by the inverse screen rotation
+        const pt = (du: number, dv: number): [number, number] => [sx + du * cos + dv * sin, sy - du * sin + dv * cos];
+        const poly = (...offs: [number, number][]) => prims.push({ t: "poly", pts: offs.flatMap(([du, dv]) => pt(du, dv)) });
+
+        if (shape === "square") {
+          const r = (ink * cell) / 2;
+          if (r > 0.1) poly([-r, -r], [r, -r], [r, r], [-r, r]);
+        } else if (shape === "diamond") {
+          const d = ink * cell * 0.72;
+          if (d > 0.1) poly([d, 0], [0, d], [-d, 0], [0, -d]);
+        } else if (shape === "line") {
+          const t = (ink * cell) / 2;
+          if (t > 0.05) poly([-cell / 2, -t], [cell / 2, -t], [cell / 2, t], [-cell / 2, t]);
+        } else if (shape === "ellipse") {
+          const rad = Math.sqrt(ink) * cell * 0.62;
+          if (rad > 0.1) prims.push({ t: "ellipse", cx: sx, cy: sy, rx: rad * 1.4, ry: rad / 1.4, rot: -ang });
+        } else {
+          const r = Math.sqrt(ink) * cell * 0.62;
+          if (r > 0.15) prims.push({ t: "circle", cx: sx, cy: sy, r });
+        }
       }
     }
     return { w, h, prims };
