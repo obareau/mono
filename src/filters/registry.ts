@@ -12,6 +12,7 @@ import { blueNoise } from "./blueNoise";
 import { patterns } from "./patterns";
 import { halftone } from "./halftone";
 import { clusteredDot } from "./clusteredDot";
+import { concentric } from "./concentric";
 import { stipple } from "./stipple";
 import { hatch } from "./hatch";
 import { contour } from "./contour";
@@ -43,6 +44,7 @@ export const FILTERS: Filter[] = [
   patterns,
   halftone,
   clusteredDot,
+  concentric,
   stipple,
   hatch,
   contour,

@@ -228,4 +228,52 @@ const voronoi: Filter = {
   },
 };
 
-export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate, voronoi];
+// VORONOI LINES — the cell boundaries only (a pixel is inked where its nearest seed differs
+// from a neighbour's): a crackle / stained-glass net rather than filled cells.
+const voronoiLines: Filter = {
+  id: "voronoi-lines",
+  name: "Voronoi Lines",
+  category: "geometry",
+  params: [
+    { key: "spacing", label: "Spacing", type: "range", default: 18, min: 4, max: 80, step: 1 },
+    { key: "jitter", label: "Jitter", type: "range", default: 0.8, min: 0, max: 1, step: 0.01 },
+    { key: "thickness", label: "Thickness", type: "range", default: 1, min: 1, max: 4, step: 1 },
+    { key: "seed", label: "Seed", type: "range", default: 1, min: 1, max: 999, step: 1 },
+  ],
+  apply(_gray, w, h, p) {
+    const s = Math.max(2, Math.round(p.spacing as number));
+    const jit = (p.jitter as number) * s;
+    const th = Math.max(1, Math.round(p.thickness as number));
+    const seed = p.seed as number;
+    const cols = Math.ceil(w / s) + 2, rows = Math.ceil(h / s) + 2;
+    const sxOf = (gx: number, gy: number) => (gx + 0.5) * s + jitter(gx, gy, seed) * jit;
+    const syOf = (gx: number, gy: number) => (gy + 0.5) * s + jitter(gx + 37, gy + 11, seed) * jit;
+    const cellAt = (x: number, y: number): number => {
+      const gx0 = Math.floor(x / s), gy0 = Math.floor(y / s);
+      let best = 0, bd = Infinity;
+      for (let gy = gy0 - 1; gy <= gy0 + 1; gy++) for (let gx = gx0 - 1; gx <= gx0 + 1; gx++) {
+        if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
+        const dx = x - sxOf(gx, gy), dy = y - syOf(gx, gy), d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = gy * cols + gx; }
+      }
+      return best;
+    };
+    const ids = new Int32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) ids[y * w + x] = cellAt(x, y);
+    const out = new Float32Array(w * h).fill(1);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const id = ids[y * w + x];
+        let edge = false;
+        for (let k = 1; k <= th && !edge; k++) {
+          if (x + k < w && ids[y * w + x + k] !== id) edge = true;
+          else if (y + k < h && ids[(y + k) * w + x] !== id) edge = true;
+        }
+        if (edge) out[y * w + x] = 0;
+      }
+    }
+    return out;
+  },
+};
+
+export const GEOMETRY: Filter[] = [pixelMosaic, adaptiveMosaic, triangulate, tessellate, voronoi, voronoiLines];
