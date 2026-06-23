@@ -123,7 +123,7 @@ html, body {
   letter-spacing: 0.5px;
   background: var(--blue-bg); /* mask pinstripes behind text */
 }
-.canvas-wrap { padding: 3px; background: var(--win); line-height: 0; overflow: hidden; cursor: grab; }
+.canvas-wrap { padding: 3px; background: var(--win); line-height: 0; overflow: hidden; cursor: grab; touch-action: none; }
 .canvas-wrap.panning { cursor: grabbing; }
 .output {
   display: block;
@@ -288,6 +288,7 @@ html, body {
   justify-content: space-between;
   height: 18px;
   padding: 0 5px;
+  touch-action: none; /* the bar is a drag handle — don't let touch scroll it */
   background-color: var(--blue-bg);
   background-image: repeating-linear-gradient(to bottom, var(--blue-pin) 0 1px, transparent 1px 2px);
   border-bottom: 1px solid var(--ink);

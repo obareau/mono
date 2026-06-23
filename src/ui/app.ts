@@ -224,6 +224,50 @@ export function mountApp(root: HTMLElement): void {
   window.addEventListener("mouseup", () => { panning = false; canvasWrap.classList.remove("panning"); });
   canvasWrap.addEventListener("dblclick", () => { if (store.source) resetView(); });
 
+  // touch: one finger pans, two fingers pinch-zoom toward their midpoint, double-tap resets
+  let tMode: "none" | "pan" | "pinch" = "none";
+  let tx = 0, ty = 0, tDist = 0, lastTap = 0;
+  const dist2 = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  canvasWrap.addEventListener("touchstart", (e) => {
+    if (!store.source) return;
+    if (e.touches.length === 1) {
+      tMode = "pan"; tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+      const now = Date.now();
+      if (now - lastTap < 300) { resetView(); lastTap = 0; } else lastTap = now;
+    } else if (e.touches.length >= 2) {
+      tMode = "pinch";
+      tDist = dist2(e.touches[0], e.touches[1]);
+      tx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      ty = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    }
+    e.preventDefault();
+  }, { passive: false });
+  canvasWrap.addEventListener("touchmove", (e) => {
+    if (tMode === "none" || !store.source) return;
+    e.preventDefault();
+    if (tMode === "pan" && e.touches.length === 1) {
+      const t = e.touches[0];
+      panX += t.clientX - tx; panY += t.clientY - ty;
+      tx = t.clientX; ty = t.clientY;
+      applyTransform();
+    } else if (tMode === "pinch" && e.touches.length >= 2) {
+      const d = dist2(e.touches[0], e.touches[1]);
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const rect = canvas.getBoundingClientRect();
+      const newZoom = clamp(zoom * (d / (tDist || d)), 0.2, 8);
+      const k = newZoom / zoom;
+      panX += (mx - rect.left) * (1 - k) + (mx - tx); // zoom toward midpoint + pan with it
+      panY += (my - rect.top) * (1 - k) + (my - ty);
+      zoom = newZoom; tDist = d; tx = mx; ty = my;
+      applyTransform();
+    }
+  }, { passive: false });
+  canvasWrap.addEventListener("touchend", (e) => {
+    if (e.touches.length === 0) tMode = "none";
+    else if (e.touches.length === 1) { tMode = "pan"; tx = e.touches[0].clientX; ty = e.touches[0].clientY; }
+  });
+
   // single-key shortcuts: O open · E export · R randomize · 0 reset zoom · hold B for before/after
   const isTyping = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
@@ -506,6 +550,7 @@ export function mountApp(root: HTMLElement): void {
   }
 
   // ---- right panel: the active stack ----
+  let touchDragUid: number | null = null; // filter card being dragged by touch
   function renderSidebar() {
     side.innerHTML = "";
 
@@ -526,6 +571,7 @@ export function mountApp(root: HTMLElement): void {
     store.stack.forEach((item, idx) => {
       const f = getFilter(item.filterId)!;
       const card = el("div", "fcard");
+      card.dataset.uid = String(item.uid); // read by touch reorder (elementFromPoint)
       if (!item.enabled) card.classList.add("off");
       if (f.terminal) card.classList.add("terminal");
 
@@ -549,6 +595,33 @@ export function mountApp(root: HTMLElement): void {
         card.classList.add("dragging-card");
       });
       bar.addEventListener("dragend", () => card.classList.remove("dragging-card"));
+
+      // touch drag-to-reorder (HTML5 DnD above is mouse-only); start on the bar but not its tools
+      bar.addEventListener("touchstart", (e) => {
+        if (e.touches.length !== 1 || (e.target as HTMLElement).closest(".fcard-tools")) return;
+        touchDragUid = item.uid;
+        card.classList.add("dragging-card");
+        e.preventDefault();
+      }, { passive: false });
+      bar.addEventListener("touchmove", (e) => {
+        if (touchDragUid == null) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        const over = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest(".fcard");
+        side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
+        if (over && over !== card) over.classList.add("drop-target");
+      }, { passive: false });
+      bar.addEventListener("touchend", (e) => {
+        if (touchDragUid == null) return;
+        const t = e.changedTouches[0];
+        const over = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest(".fcard") as HTMLElement | null;
+        side.querySelectorAll(".fcard.drop-target").forEach((c) => c.classList.remove("drop-target"));
+        card.classList.remove("dragging-card");
+        const toUid = over && over !== card ? Number(over.dataset.uid) : 0;
+        const from = touchDragUid;
+        touchDragUid = null;
+        if (toUid) store.reorder(from, toUid);
+      });
       const title = el("span", "fcard-title");
       title.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
       bar.appendChild(title);
