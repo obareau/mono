@@ -12,11 +12,15 @@ export default defineConfig({
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
   },
+  // In CI, test the real production bundle (build + preview) so prod-only issues — e.g. the
+  // module worker not loading from the built chunk — are caught. Locally, use the dev server.
   webServer: {
-    command: "npm run dev -- --port 4173 --strictPort",
+    command: process.env.CI
+      ? "npm run build && npx vite preview --port 4173 --strictPort"
+      : "npm run dev -- --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    timeout: 120_000,
   },
   projects: [
     {
