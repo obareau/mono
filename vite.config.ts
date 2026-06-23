@@ -6,6 +6,9 @@ export default defineConfig({
   server: { open: true },
   plugins: [
     VitePWA({
+      // Emergency: ship a self-destroying service worker so every client unregisters the old
+      // SW and purges its stale precache on next load (the cause of seeing an old build).
+      selfDestroying: true,
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png"],
       manifest: {
