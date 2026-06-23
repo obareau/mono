@@ -38,14 +38,16 @@ to use with 42 filters** and **hardening** it. Recommended order: A → B → C,
       synchronous run if a Worker can't be created.
 - [x] This unblocks **Reaction-Diffusion** (heavy, iterative) and any future costly filter.
 
-## Lane C — pro / print output
+## Lane C — pro / print output ✅
 
-- [ ] **Export dialog.** Scale (1× / 2× / native / custom px), background (white / transparent),
-      invert, format — instead of the current one-shot buttons.
-- [ ] **Riso "ink" export.** The workbench stays strictly B&W, but on export map black → a
-      chosen spot ink and white → a paper colour (e.g. orange on cream) for PNG/SVG — directly
-      useful for zines / risograph.
-- [ ] **Print-ready PDF.** Page size (A4 / Letter), DPI, margins, fit or tile.
+- [x] **Export dialog.** A single EXPORT… button opens a modal: format (auto-limited to PNG /
+      SVG / PDF / TXT / HTML by what the stack supports), scale (1× / 2× / native / custom px),
+      background (white / transparent), invert. Options persist in localStorage.
+- [x] **Riso "ink" export.** The workbench stays strictly B&W, but on export black → a chosen
+      spot ink and white → a paper colour (e.g. orange on cream) for PNG (pixel recolour) and
+      SVG/PDF (fill colours) — directly useful for zines / risograph. Invert swaps ink/paper.
+- [x] **Print-ready PDF.** Page size (Fit / A4 / Letter, auto-oriented), margins (mm), and
+      fit-to-page or tile-at-DPI across multiple sheets. Dependency-free writer.
 
 ## Lane D — new filters (ongoing)
 

@@ -1,4 +1,5 @@
 import type { PipelineResult } from "../engine/pipeline";
+import { hexToRgb, type InkStyle } from "./export";
 
 // Paint a pipeline result onto a canvas. Buffer results become a 1:1 black & white bitmap;
 // terminal results (ASCII) draw themselves at the requested output resolution.
@@ -24,6 +25,29 @@ export function renderToCanvas(canvas: HTMLCanvasElement, result: PipelineResult
     const v = Math.round(Math.min(1, Math.max(0, gray[i])) * 255);
     d[j] = d[j + 1] = d[j + 2] = v;
     d[j + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// Recolour a rendered B&W canvas: map luminance to a paper→ink ramp, optionally making
+// paper transparent (ink coverage = 1 − luma). Works on any result since it reads pixels.
+export function recolorCanvas(canvas: HTMLCanvasElement, style: InkStyle): void {
+  const ctx = canvas.getContext("2d")!;
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+  const [ir, ig, ib] = hexToRgb(style.ink);
+  const [pr, pg, pb] = hexToRgb(style.paper);
+  for (let i = 0; i < d.length; i += 4) {
+    const v = d[i] / 255; // grayscale: r=g=b
+    if (style.transparent) {
+      d[i] = ir; d[i + 1] = ig; d[i + 2] = ib;
+      d[i + 3] = Math.round((1 - v) * 255); // ink coverage
+    } else {
+      d[i] = Math.round(pr + (ir - pr) * (1 - v));
+      d[i + 1] = Math.round(pg + (ig - pg) * (1 - v));
+      d[i + 2] = Math.round(pb + (ib - pb) * (1 - v));
+      d[i + 3] = 255;
+    }
   }
   ctx.putImageData(img, 0, 0);
 }

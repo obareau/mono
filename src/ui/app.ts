@@ -2,8 +2,10 @@ import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
 import type { Filter } from "../filters/types";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
-import { renderToCanvas, exportPNG, exportText } from "../io/render";
+import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
+import { effectiveStyle, isPlainStyle, type ExportOptions, type ExportFormat } from "../io/export";
+import { openExportDialog } from "./exportDialog";
 import {
   shareURL, STARTER_PRESETS,
   loadUserPresets, saveUserPreset, deleteUserPreset, exportUserPresets, importUserPresets,
@@ -66,53 +68,66 @@ export function mountApp(root: HTMLElement): void {
   root.appendChild(fileInput);
 
   let lastResult: PipelineResult | null = null;
+  // export availability, refreshed each render — drives the dialog's format list
+  let hasVector = false, hasTermText = false, hasTermHtml = false;
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
-  const exportBtn = btn("EXPORT PNG", "", () => exportPNGFull());
 
-  // Re-run the stack at the source's native resolution (capped) for a print-quality PNG.
   const EXPORT_MAX = 4096;
-  async function exportPNGFull() {
-    const src = store.source;
-    if (!src) return;
-    if (!src.bitmap) {
-      exportPNG(canvas, "mono.png"); // no original kept (shouldn't happen) — fall back to preview
-      return;
+  const previewLongEdge = () => Math.max(store.source!.w, store.source!.h);
+  const nativeLongEdge = () => Math.min(EXPORT_MAX, Math.max(store.source!.natW, store.source!.natH));
+  function targetLongEdge(o: ExportOptions): number {
+    switch (o.scale) {
+      case "1x": return previewLongEdge();
+      case "2x": return Math.min(EXPORT_MAX, previewLongEdge() * 2);
+      case "native": return nativeLongEdge();
+      default: return Math.min(8192, Math.max(16, Math.round(o.customPx)));
     }
-    exportBtn.textContent = "RENDERING…";
-    await new Promise((r) => setTimeout(r, 0));
-    const max = Math.min(EXPORT_MAX, Math.max(src.natW, src.natH));
-    const hi = fromBitmap(src.bitmap, max);
-    const result = runPipeline(hi, store.stack);
-    const off = document.createElement("canvas");
-    renderToCanvas(off, result);
-    exportPNG(off, "mono.png");
-    exportBtn.textContent = "EXPORT PNG";
   }
-  const exportTxtBtn = btn("EXPORT TXT", "", () => {
-    const t = lastResult?.terminal?.text?.();
-    if (t) exportText(t, "mono.txt");
-  });
-  const exportHtmlBtn = btn("EXPORT HTML", "", () => {
-    const html = lastResult?.terminal?.html?.();
-    if (html) downloadText(html, "mono.html", "text/html");
-  });
-  exportTxtBtn.style.display = "none"; // both shown only when an ASCII (text) result is active
-  exportHtmlBtn.style.display = "none";
 
-  // Vector export — re-runs the stack to the last vector-capable filter at native resolution.
-  function exportVector(kind: "svg" | "pdf") {
-    const src = store.source;
-    if (!src) return;
-    const hiSrc = src.bitmap ? fromBitmap(src.bitmap, Math.min(EXPORT_MAX, Math.max(src.natW, src.natH))) : src;
+  // PNG: re-run the stack at the chosen resolution (terminal results just rescale), then
+  // recolour for ink/paper/transparent if the style isn't plain black-on-white.
+  function exportRaster(o: ExportOptions) {
+    const src = store.source!;
+    const off = document.createElement("canvas");
+    if (lastResult?.terminal) renderToCanvas(off, lastResult, targetLongEdge(o) / previewLongEdge());
+    else if (src.bitmap) renderToCanvas(off, runPipeline(fromBitmap(src.bitmap, targetLongEdge(o)), store.stack));
+    else renderToCanvas(off, runPipeline(src, store.stack));
+    const style = effectiveStyle(o);
+    if (!isPlainStyle(style)) recolorCanvas(off, style);
+    exportPNG(off, "mono.png");
+  }
+
+  // SVG/PDF: re-run to the last vector-capable filter at native resolution, then write.
+  function exportVectorFile(o: ExportOptions) {
+    const src = store.source!;
+    const hiSrc = src.bitmap ? fromBitmap(src.bitmap, nativeLongEdge()) : src;
     const scene = runToVector(hiSrc, store.stack);
     if (!scene) return;
-    if (kind === "svg") downloadText(sceneToSVG(scene), "mono.svg", "image/svg+xml");
-    else downloadBytes(sceneToPDF(scene), "mono.pdf", "application/pdf");
+    const style = effectiveStyle(o);
+    if (o.format === "svg") downloadText(sceneToSVG(scene, style), "mono.svg", "image/svg+xml");
+    else downloadBytes(
+      sceneToPDF(scene, { pageSize: o.pageSize, marginMM: o.marginMM, mode: o.pdfMode, dpi: o.dpi, ink: style.ink, paper: style.paper, transparent: style.transparent }),
+      "mono.pdf", "application/pdf",
+    );
   }
-  const svgBtn = btn("EXPORT SVG", "", () => exportVector("svg"));
-  const pdfBtn = btn("EXPORT PDF", "", () => exportVector("pdf"));
-  svgBtn.style.display = "none";
-  pdfBtn.style.display = "none";
+
+  function runExport(o: ExportOptions) {
+    if (!store.source) return;
+    if (o.format === "png") exportRaster(o);
+    else if (o.format === "svg" || o.format === "pdf") exportVectorFile(o);
+    else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) exportText(t, "mono.txt"); }
+    else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) downloadText(h, "mono.html", "text/html"); }
+  }
+
+  function openExport() {
+    if (!store.source) return;
+    const formats: ExportFormat[] = ["png"];
+    if (hasVector) formats.push("svg", "pdf");
+    if (hasTermText) formats.push("txt");
+    if (hasTermHtml) formats.push("html");
+    openExportDialog({ formats, onExport: runExport });
+  }
+  const exportBtn = btn("EXPORT…", "", openExport);
   const shareBtn = btn("COPY LINK", "", async () => {
     const url = shareURL(store.serialize());
     history.replaceState(null, "", url);
@@ -135,7 +150,7 @@ export function mountApp(root: HTMLElement): void {
   store.subscribeHistory(updateHistoryButtons);
   updateHistoryButtons();
 
-  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportTxtBtn, exportHtmlBtn, svgBtn, pdfBtn, exportBtn);
+  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportBtn);
 
   // keyboard: undo / redo (ignore while typing in a text field)
   window.addEventListener("keydown", (e) => {
@@ -205,7 +220,7 @@ export function mountApp(root: HTMLElement): void {
     if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return;
     switch (e.key.toLowerCase()) {
       case "o": e.preventDefault(); fileInput.click(); break;
-      case "e": if (store.source) { e.preventDefault(); exportPNGFull(); } break;
+      case "e": if (store.source) { e.preventDefault(); openExport(); } break;
       case "r": e.preventDefault(); store.setStack(randomStack()); break;
       case "0": if (store.source) { e.preventDefault(); resetView(); } break;
       case "b": if (store.source && !showSource) { e.preventDefault(); showSource = true; redraw(); } break;
@@ -265,11 +280,9 @@ export function mountApp(root: HTMLElement): void {
   // Paint a finished pipeline result and sync the export buttons to it.
   function applyPipelineResult(result: PipelineResult) {
     lastResult = result;
-    exportTxtBtn.style.display = result.terminal?.text ? "" : "none";
-    exportHtmlBtn.style.display = result.terminal?.html ? "" : "none";
-    const hasVector = lastVectorIndex(store.stack) >= 0;
-    svgBtn.style.display = hasVector ? "" : "none";
-    pdfBtn.style.display = hasVector ? "" : "none";
+    hasTermText = !!result.terminal?.text;
+    hasTermHtml = !!result.terminal?.html;
+    hasVector = lastVectorIndex(store.stack) >= 0;
     renderToCanvas(canvas, result);
     applyTransform();
   }
