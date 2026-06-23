@@ -53,3 +53,63 @@ test("favouriting a filter pins it to a Favourites group", async ({ page }) => {
   await page.locator(".panel-left .filter-chip .star").first().click();
   await expect(page.getByText("★ FAVOURITES")).toBeVisible();
 });
+
+test("randomize replaces the stack with a small random one", async ({ page }) => {
+  await page.getByRole("button", { name: "RANDOM" }).click();
+  await expect(page.locator(".sidebar .phead span").first()).toContainText(/STACK · [1-3]/);
+});
+
+test("clear empties the stack", async ({ page }) => {
+  await page.getByRole("button", { name: "CLEAR" }).click();
+  await expect(page.locator(".sidebar .phead span").first()).toContainText("STACK · 0");
+  await expect(page.locator(".sidebar .empty")).toBeVisible();
+});
+
+test("copy link writes a #s= hash to the URL", async ({ page }) => {
+  await page.getByRole("button", { name: /COPY LINK/ }).click();
+  await expect(page).toHaveURL(/#s=/);
+});
+
+// ---- exports (load a real image first so the pipeline has a source) ----
+
+async function loadImage(page: import("@playwright/test").Page) {
+  await page.locator('input[accept="image/*"]').first().setInputFiles("src/io/demo.jpg");
+  // wait until the canvas leaves its 640×400 placeholder, i.e. the image rendered
+  await expect
+    .poll(() => page.locator("canvas.output").evaluate((c) => (c as HTMLCanvasElement).width))
+    .not.toBe(640);
+}
+
+test("export PNG downloads mono.png", async ({ page }) => {
+  await loadImage(page);
+  await page.getByRole("button", { name: /EXPORT/ }).click();
+  await page.locator(".modal select").first().selectOption("png");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "EXPORT", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("mono.png");
+});
+
+test("export SVG downloads mono.svg when a vector filter is present", async ({ page }) => {
+  await loadImage(page);
+  await page.locator(".panel-left .filter-chip", { hasText: "Halftone" }).first().click();
+
+  // the worker render flips on vector availability asynchronously; retry opening the
+  // dialog until the SVG format option appears, then leave the dialog open
+  await expect
+    .poll(async () => {
+      await page.getByRole("button", { name: /EXPORT/ }).click();
+      const has = await page.locator('.modal select option[value="svg"]').count();
+      if (!has) await page.getByRole("button", { name: "CANCEL" }).click();
+      return has;
+    }, { timeout: 5000 })
+    .toBe(1);
+
+  await page.locator(".modal select").first().selectOption("svg");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "EXPORT", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("mono.svg");
+});
