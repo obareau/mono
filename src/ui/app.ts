@@ -126,10 +126,15 @@ export function mountApp(root: HTMLElement): void {
 
   function runExport(o: ExportOptions) {
     if (!store.source) return;
-    if (o.format === "png") exportRaster(o);
-    else if (o.format === "svg" || o.format === "pdf") exportVectorFile(o);
-    else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) exportText(t, "mono.txt"); }
-    else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) downloadText(h, "mono.html", "text/html"); }
+    try {
+      if (o.format === "png") exportRaster(o);
+      else if (o.format === "svg" || o.format === "pdf") exportVectorFile(o);
+      else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) exportText(t, "mono.txt"); }
+      else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) downloadText(h, "mono.html", "text/html"); }
+    } catch (err) {
+      console.warn("[mono] export failed:", err);
+      toast("Export failed — try a smaller scale or a different format");
+    }
   }
 
   function openExport() {
@@ -344,6 +349,17 @@ export function mountApp(root: HTMLElement): void {
     applyTransform();
   }
 
+  // transient status pill (render errors, fallbacks) — non-blocking
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  function toast(message: string) {
+    let t = root.querySelector(".toast") as HTMLElement | null;
+    if (!t) { t = el("div", "toast"); root.appendChild(t); }
+    t.textContent = message;
+    t.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t!.classList.remove("show"), 2600);
+  }
+
   // The pipeline runs in a Web Worker so heavy filters (Engraving/LIC, Circle Pack, big
   // stacks) never freeze the UI. We keep at most one run in flight and coalesce to the
   // latest stack, so results are never stale. Falls back to a synchronous run if the
@@ -359,9 +375,20 @@ export function mountApp(root: HTMLElement): void {
   let reqId = 0;
   let sentSource: typeof store.source = null;
   let sentMaskVersion = -1;
+  const RENDER_FAIL = "Render failed — check that filter's settings";
+
+  // run the stack synchronously on the main thread (worker fallback), guarding throws
+  function renderSync() {
+    try {
+      applyPipelineResult(runPipeline(store.source!, store.stack));
+    } catch (err) {
+      console.warn("[mono] render failed:", err);
+      toast(RENDER_FAIL);
+    }
+  }
 
   function requestRender() {
-    if (!worker) { applyPipelineResult(runPipeline(store.source!, store.stack)); return; }
+    if (!worker) { renderSync(); return; }
     if (busy) { pending = true; return; }
     if (store.source !== sentSource) {
       const s = store.source!;
@@ -379,18 +406,34 @@ export function mountApp(root: HTMLElement): void {
   if (worker) {
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
-      if (msg?.type !== "result") return;
-      busy = false;
-      if (store.source && !showSource) {
-        const gray: Float32Array = msg.gray;
-        let terminal;
-        if (msg.terminal) {
-          const f = getFilter(msg.terminal.filterId);
-          terminal = f?.render?.(gray, msg.w, msg.h, msg.terminal.params);
+      if (msg?.type !== "result" && msg?.type !== "error") return;
+      busy = false; // always release the in-flight lock so the UI never wedges
+      if (msg.type === "error") {
+        console.warn("[mono] filter render failed:", msg.message);
+        toast(RENDER_FAIL); // keep the last good frame on screen
+      } else if (store.source && !showSource) {
+        try {
+          const gray: Float32Array = msg.gray;
+          let terminal;
+          if (msg.terminal) {
+            const f = getFilter(msg.terminal.filterId);
+            terminal = f?.render?.(gray, msg.w, msg.h, msg.terminal.params);
+          }
+          applyPipelineResult({ gray, w: msg.w, h: msg.h, terminal });
+        } catch (err) {
+          console.warn("[mono] terminal render failed:", err);
+          toast(RENDER_FAIL);
         }
-        applyPipelineResult({ gray, w: msg.w, h: msg.h, terminal });
       }
-      if (pending) { pending = false; requestRender(); }
+      if (pending) { pending = false; requestRender(); } // retry with the latest stack
+    };
+    // a fatal worker crash: drop to synchronous rendering for the rest of the session
+    worker.onerror = (ev) => {
+      console.error("[mono] worker crashed, falling back to main thread:", ev.message);
+      worker = null;
+      busy = false;
+      toast("Renderer fell back to the main thread");
+      redraw();
     };
   }
 

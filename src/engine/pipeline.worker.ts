@@ -24,11 +24,16 @@ self.onmessage = (e: MessageEvent<InMsg>) => {
   }
   if (msg.type === "run") {
     if (!src) return;
-    const res = runPipelineBuffer(src, msg.stack);
-    const gray = res.gray as Float32Array;
-    self.postMessage(
-      { type: "result", reqId: msg.reqId, w: res.w, h: res.h, gray, terminal: res.terminal },
-      { transfer: [gray.buffer] },
-    );
+    try {
+      const res = runPipelineBuffer(src, msg.stack);
+      const gray = res.gray as Float32Array;
+      self.postMessage(
+        { type: "result", reqId: msg.reqId, w: res.w, h: res.h, gray, terminal: res.terminal },
+        { transfer: [gray.buffer] },
+      );
+    } catch (err) {
+      // a filter threw — report instead of dying, so the main thread can recover the UI
+      self.postMessage({ type: "error", reqId: msg.reqId, message: err instanceof Error ? err.message : String(err) });
+    }
   }
 };
