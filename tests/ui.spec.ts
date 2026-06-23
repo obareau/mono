@@ -149,3 +149,14 @@ test("export SVG downloads mono.svg when a vector filter is present", async ({ p
   ]);
   expect(download.suggestedFilename()).toBe("mono.svg");
 });
+
+test("the ? shortcut opens the keyboard help, Esc closes it", async ({ page }) => {
+  await page.keyboard.press("?");
+  await expect(page.locator(".help-overlay .modal-title")).toHaveText("KEYBOARD & GESTURES");
+  await expect(page.locator(".help-row").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".help-overlay")).toHaveCount(0);
+  // also via the toolbar button
+  await page.getByRole("button", { name: "?", exact: true }).click();
+  await expect(page.locator(".help-overlay")).toBeVisible();
+});

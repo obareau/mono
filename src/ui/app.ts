@@ -169,7 +169,9 @@ export function mountApp(root: HTMLElement): void {
   store.subscribeHistory(updateHistoryButtons);
   updateHistoryButtons();
 
-  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportBtn);
+  const helpBtn = btn("?", "", openHelp);
+  helpBtn.title = "Keyboard & gestures (?)";
+  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportBtn, helpBtn);
 
   // keyboard: undo / redo (ignore while typing in a text field)
   window.addEventListener("keydown", (e) => {
@@ -287,6 +289,7 @@ export function mountApp(root: HTMLElement): void {
       case "r": e.preventDefault(); store.setStack(randomStack()); break;
       case "0": if (store.source) { e.preventDefault(); resetView(); } break;
       case "b": if (store.source && !showSource) { e.preventDefault(); showSource = true; redraw(); } break;
+      case "?": e.preventDefault(); openHelp(); break;
     }
   });
   window.addEventListener("keyup", (e) => {
@@ -741,6 +744,48 @@ export function mountApp(root: HTMLElement): void {
   renderLeft();
   renderSidebar();
   redraw();
+}
+
+// Keyboard & gesture cheatsheet (opened by the ? key or the ? button).
+function openHelp(): void {
+  if (document.querySelector(".help-overlay")) return;
+  const overlay = el("div", "modal-overlay help-overlay");
+  const panel = el("div", "modal");
+  const title = el("div", "modal-title");
+  title.textContent = "KEYBOARD & GESTURES";
+  const body = el("div", "modal-body help-body");
+  const rows: [string, string][] = [
+    ["O", "Open image"],
+    ["E", "Export…"],
+    ["R", "Randomize the stack"],
+    ["B", "Hold to compare with the source"],
+    ["0", "Reset zoom & pan"],
+    ["⌘/Ctrl + Z", "Undo"],
+    ["⇧ + ⌘/Ctrl + Z", "Redo"],
+    ["Scroll / pinch", "Zoom the canvas"],
+    ["Drag / two-finger", "Pan the canvas"],
+    ["Double-click / -tap", "Reset the view"],
+    ["Drag a filter's title", "Reorder the stack"],
+    ["Esc", "Close dialogs"],
+  ];
+  for (const [k, d] of rows) {
+    const row = el("div", "help-row");
+    const kbd = el("span", "kbd");
+    kbd.textContent = k;
+    const desc = el("span", "help-desc");
+    desc.textContent = d;
+    row.append(kbd, desc);
+    body.appendChild(row);
+  }
+  const foot = el("div", "modal-foot");
+  const close = () => { document.removeEventListener("keydown", onKey); overlay.remove(); };
+  const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
+  foot.appendChild(btn("CLOSE", "primary", close));
+  panel.append(title, body, foot);
+  overlay.appendChild(panel);
+  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(); });
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(overlay);
 }
 
 function btn(label: string, cls: string, onClick: () => void): HTMLButtonElement {
