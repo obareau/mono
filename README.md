@@ -4,17 +4,20 @@
 
 # MONO°
 
-**An industrial 1-bit black & white image workbench.** Drop in a photo, stack screens and
-dithers, and pull out crisp monochrome art. Built for zines, risograph/offset prep, and the
-pure MacPaint aesthetic.
+**An industrial 1-bit black & white image workbench.** Drop in a photo, stack from **42
+filters** — dithers, halftone screens, engraving, geometry, glitch and ASCII — and pull out
+crisp monochrome art. Built for zines, risograph/offset prep, and the pure MacPaint aesthetic.
 
-Black & white only, by design. The interface is grayscale with a single restrained orange accent.
+Black & white only, by design. The interface is grayscale with a single restrained orange
+accent. Stack filters top-to-bottom with per-filter Mix; export **PNG (native resolution),
+SVG / PDF vector, TXT / HTML**; share a whole stack by URL. No runtime dependencies (~20 kB
+gzip); installable PWA, works offline.
 
 ### ▶ [Try it live — obareau.github.io/mono](https://obareau.github.io/mono/)
 
 Installable as a PWA (works offline). Open the link and choose "Install" / "Add to Home Screen".
 
-![status](https://img.shields.io/badge/status-alpha-ff5a00)
+![status](https://img.shields.io/badge/status-v1-ff5a00) ![filters](https://img.shields.io/badge/filters-42-111) ![deps](https://img.shields.io/badge/runtime%20deps-0-111)
 
 <p align="center">
   <img src="assets/screenshot-dither.png" alt="MONO° workbench — error-diffusion dithering with the full filter palette" width="100%">

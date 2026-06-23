@@ -1,6 +1,11 @@
 # Roadmap
 
-Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
+**Status — v1 shipped.** Tier 1 + Tier 2 done, all ongoing filters shipped, and a product
+pass (PWA, social preview, mobile). MONO° has **42 filters**, exports PNG/SVG/PDF/TXT/HTML,
+shareable stacks, and is live at <https://obareau.github.io/mono/>. What's left below is the
+open backlog (a few extra filters + the deferred Reaction-Diffusion).
+
+Ordered by leverage, not by how fun it is. The point of Tier 1 was to make MONO°
 **usable and shareable** before deepening the engine.
 
 ## Tier 1 — ship soon, highest leverage
@@ -41,6 +46,13 @@ Ordered by leverage, not by how fun it is. The point of Tier 1 is to make MONO°
 - [x] Hatch vector export — variable-width line segments (lines/crosshatch/spiral)
 - [x] Custom **threshold-map** dithering — load any image as the dither screen (Bayer fallback)
 - [x] ASCII export to a standalone styled HTML page
+
+## Backlog — ideas
+
+- [ ] Clean Sobel edge detect (thinned) — distinct from XDoG / Contour Shock
+- [ ] More halftone variants (diamond / line-screen angles)
+- [ ] Reaction-Diffusion, done properly (tuned dt + Web Worker)
+- [ ] Image-seeded Voronoi (seed density follows tone)
 
 ## Scope — MONO° is a still-image tool
 
