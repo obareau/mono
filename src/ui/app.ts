@@ -2,6 +2,7 @@ import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
 import type { Filter } from "../filters/types";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
+import { downscale } from "../engine/pipelineCache";
 import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
 import { effectiveStyle, isPlainStyle, type ExportOptions, type ExportFormat } from "../io/export";
@@ -605,6 +606,23 @@ export function mountApp(root: HTMLElement): void {
 
   // ---- right panel: the active stack ----
   let dragUid: number | null = null; // filter card currently being dragged (pointer reorder)
+
+  // Small rendered preview of the pipeline up to (and including) a stack index — used as the
+  // drag image. Runs synchronously on a tiny downscaled source, so it's cheap.
+  const THUMB = 96;
+  function thumbnailFor(idx: number): HTMLCanvasElement | null {
+    if (!store.source) return null;
+    try {
+      const result = runPipeline(downscale(store.source, THUMB), store.stack.slice(0, idx + 1));
+      const c = document.createElement("canvas");
+      renderToCanvas(c, result);
+      c.className = "drag-thumb";
+      return c;
+    } catch {
+      return null;
+    }
+  }
+
   function renderSidebar() {
     side.innerHTML = "";
 
@@ -644,7 +662,11 @@ export function mountApp(root: HTMLElement): void {
         dragUid = item.uid;
         card.classList.add("dragging-card");
         ghost = el("div", "drag-ghost");
-        ghost.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
+        const thumb = thumbnailFor(idx);
+        if (thumb) ghost.appendChild(thumb);
+        const label = el("div", "drag-ghost-label");
+        label.innerHTML = `<i>${String(idx + 1).padStart(2, "0")}</i> ${f.name}`;
+        ghost.appendChild(label);
         document.body.appendChild(ghost);
         moveGhost(e.clientX, e.clientY);
         try { bar.setPointerCapture(e.pointerId); } catch { /* no active pointer (synthetic) */ }
