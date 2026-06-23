@@ -1,4 +1,14 @@
 import type { SourceImage } from "./loadImage";
+import { fromBitmap } from "./loadImage";
+import demoUrl from "./demo.jpg";
+
+// Load the bundled MONO° splash as the first-load demo (real image → full-res export works).
+// Falls back to the procedural scene below if it can't be fetched.
+export async function loadDemoImage(): Promise<SourceImage> {
+  const blob = await (await fetch(demoUrl)).blob();
+  const bitmap = await createImageBitmap(blob);
+  return fromBitmap(bitmap, 1024);
+}
 
 // First-load intro art in an Amiga / Deluxe Paint spirit: a gradient sky over a perspective
 // grid floor, checkered shaded spheres (Boing-Ball style), and the MONO° wordmark. All
