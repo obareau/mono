@@ -160,3 +160,10 @@ test("the ? shortcut opens the keyboard help, Esc closes it", async ({ page }) =
   await page.getByRole("button", { name: "?", exact: true }).click();
   await expect(page.locator(".help-overlay")).toBeVisible();
 });
+
+test("hovering a filter shows a rendered preview thumbnail", async ({ page }) => {
+  await loadImage(page);
+  await page.locator(".panel-left .filter-chip").first().hover();
+  await expect(page.locator(".chip-preview.show")).toBeVisible();
+  await expect(page.locator(".chip-preview canvas")).toBeVisible();
+});

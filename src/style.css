@@ -441,6 +441,20 @@ select { cursor: pointer; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* hover preview of a filter (what it does to the current image) */
+.chip-preview {
+  position: fixed; left: 0; top: 0; z-index: 150;
+  background: var(--platinum); border: 1px solid var(--ink); border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); overflow: hidden;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s;
+}
+.chip-preview.show { opacity: 1; }
+.chip-preview canvas { display: block; width: 150px; height: auto; background: #fff; image-rendering: pixelated; }
+.chip-preview-label {
+  padding: 3px 8px; font-family: var(--ui); font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+  background: var(--blue-bg); border-top: 1px solid var(--ink);
+}
+
 /* mobile tab bar — hidden on desktop, where both panels are always visible */
 .mobile-tabs { display: none; }
 

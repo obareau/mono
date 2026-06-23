@@ -1,6 +1,7 @@
 import { store } from "../state/store";
 import { FILTERS, getFilter } from "../filters/registry";
 import type { Filter } from "../filters/types";
+import { defaultParams } from "../filters/types";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { downscale } from "../engine/pipelineCache";
 import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
@@ -490,12 +491,49 @@ export function mountApp(root: HTMLElement): void {
   // live filter-browser search; kept across re-renders, applied without a rebuild so focus survives
   let filterQuery = "";
 
+  // hover preview: render a filter applied alone to the current image, to show what it does.
+  // Thumbnails are cached per filter and invalidated when the source changes.
+  const canHover = window.matchMedia("(hover: hover)").matches;
+  const thumbCache = new Map<string, HTMLCanvasElement>();
+  let thumbSourceRef: typeof store.source = null;
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  const preview = el("div", "chip-preview");
+  root.appendChild(preview);
+  function hidePreview() {
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    preview.classList.remove("show");
+  }
+  function showPreview(f: Filter, anchor: HTMLElement) {
+    if (!store.source) return;
+    if (store.source !== thumbSourceRef) { thumbCache.clear(); thumbSourceRef = store.source; }
+    let canvas = thumbCache.get(f.id);
+    if (!canvas) {
+      try {
+        const res = runPipeline(downscale(store.source, 150), [{ filterId: f.id, params: defaultParams(f), enabled: true, opacity: 1 }]);
+        canvas = document.createElement("canvas");
+        renderToCanvas(canvas, res);
+        thumbCache.set(f.id, canvas);
+      } catch { return; }
+    }
+    const label = el("div", "chip-preview-label");
+    label.textContent = f.name;
+    preview.replaceChildren(canvas, label);
+    const r = anchor.getBoundingClientRect();
+    preview.style.left = `${r.right + 8}px`;
+    preview.style.top = `${Math.max(8, Math.min(window.innerHeight - 180, r.top - 4))}px`;
+    preview.classList.add("show");
+  }
+
   // a filter chip: click to add, star to favourite. Tagged for the search filter.
   function filterChip(f: Filter): HTMLButtonElement {
-    const b = btn(f.name.toUpperCase(), "chip filter-chip", () => store.addFilter(f.id));
+    const b = btn(f.name.toUpperCase(), "chip filter-chip", () => { hidePreview(); store.addFilter(f.id); });
     b.textContent = "";
     b.dataset.name = f.name.toLowerCase();
     b.dataset.cat = (CATEGORY_LABELS[f.category] ?? f.category).toLowerCase();
+    if (canHover) {
+      b.addEventListener("mouseenter", () => { hoverTimer = setTimeout(() => showPreview(f, b), 160); });
+      b.addEventListener("mouseleave", hidePreview);
+    }
     const label = el("span", "chip-label");
     label.textContent = f.name.toUpperCase();
     const isFav = loadFavourites().includes(f.id);
