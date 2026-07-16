@@ -18,6 +18,7 @@ import { randomStack } from "../io/randomize";
 import { getMasksVersion, allMasks } from "../io/maskStore";
 import type { PipelineResult } from "../engine/pipeline";
 import { loadImageFile, fromBitmap, MAX_SOURCE } from "../io/loadImage";
+import { maxRenderableEdge } from "../io/safeCanvas";
 import { buildControl, el } from "./controls";
 
 // Renders the whole interface and keeps the canvas in sync with the store.
@@ -89,8 +90,9 @@ export function mountApp(root: HTMLElement): void {
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
 
   // Cap every raster export at the same safe size the source is capped to on load, so a big
-  // export canvas never silently comes back blank on mobile (the "lychee hotfix"). See loadImage.
-  const EXPORT_MAX = MAX_SOURCE;
+  // export canvas never silently comes back blank on mobile (the "lychee hotfix"). Uses the
+  // per-device probed limit (some Android GPUs cap below 4096), not just the static ceiling.
+  const EXPORT_MAX = maxRenderableEdge(MAX_SOURCE);
   const previewLongEdge = () => Math.max(store.source!.w, store.source!.h);
   const nativeLongEdge = () => Math.min(EXPORT_MAX, Math.max(store.source!.natW, store.source!.natH));
   function targetLongEdge(o: ExportOptions): number {

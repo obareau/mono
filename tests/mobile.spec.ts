@@ -24,6 +24,55 @@ test("canvas pinned and the tab bar toggles between Filters and Stack", async ({
   await expect(page.locator(".sidebar")).toBeHidden();
 });
 
+// Android/iOS coverage for the lychee hotfix: on a touch device, an oversized camera photo must
+// still export with its effects (capped, non-blank) — the delivery falls back to a download here
+// since headless Chromium has no navigator.share, proving the mobile path doesn't break.
+test("mobile: oversized photo exports capped and with effects", async ({ page }) => {
+  await page.goto("/");
+  const dataUrl = await page.evaluate(() => {
+    const w = 6000, h = 4000;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d")!;
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, "#000"); grad.addColorStop(1, "#fff");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    return c.toDataURL("image/png");
+  });
+  const buffer = Buffer.from(dataUrl.split(",")[1], "base64");
+  await page.locator('input[accept="image/*"]').first().setInputFiles({ name: "camera.png", mimeType: "image/png", buffer });
+  await expect.poll(() => page.locator("canvas.output").evaluate((c) => (c as HTMLCanvasElement).width)).not.toBe(640);
+
+  await page.locator(".panel-left .palette.two button", { hasText: "FLOYD" }).first().click();
+  await page.waitForTimeout(1200);
+
+  await page.keyboard.press("e"); // opens the export dialog regardless of the mobile layout
+  await expect(page.locator(".modal")).toBeVisible();
+  await page.locator(".modal-row", { hasText: "Scale" }).locator("select").selectOption({ label: "Native" });
+
+  const dl = page.waitForEvent("download");
+  await page.locator(".modal .btn.primary", { hasText: "EXPORT" }).click();
+  const path = await (await dl).path();
+
+  const { readFileSync } = await import("fs");
+  const url = "data:image/png;base64," + readFileSync(path!).toString("base64");
+  const stats = await page.evaluate(async (u) => {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = u; });
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext("2d")!; ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    const levels = new Set<number>(); let nonWhite = 0;
+    for (let i = 0; i < d.length; i += 4) { levels.add(d[i]); if (d[i] < 250) nonWhite++; }
+    return { w: c.width, h: c.height, levels: levels.size, nonWhite };
+  }, url);
+
+  expect(Math.max(stats.w, stats.h)).toBeLessThanOrEqual(4096); // capped
+  expect(stats.nonWhite).toBeGreaterThan(1000);                 // not blank
+  expect(stats.levels).toBeLessThan(8);                          // dithered
+});
+
 // Dispatch a one-finger touch drag (start → move → end) at page coordinates.
 async function touchDrag(page: import("@playwright/test").Page, selector: string, sx: number, sy: number, tx: number, ty: number) {
   await page.evaluate(({ selector, sx, sy, tx, ty }) => {

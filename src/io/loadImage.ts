@@ -2,6 +2,8 @@
 // R/G/B planes (0..1), downscaled so the long edge fits `maxDim`. The colour planes let
 // photographic colour filters re-derive the grayscale with custom channel weights.
 
+import { maxRenderableEdge } from "./safeCanvas";
+
 export interface SourceImage {
   gray: Float32Array;
   r: Float32Array;
@@ -25,8 +27,10 @@ export interface SourceImage {
 export const MAX_SOURCE = 4096;
 const MAX_SOURCE_AREA = 4096 * 4096; // 16.7 M px — the modern iOS Safari ceiling
 
-// Fit (w,h) under both the long-edge and total-area caps, preserving aspect ratio.
-export function fitWithin(w: number, h: number, maxDim = MAX_SOURCE, maxArea = MAX_SOURCE_AREA): number {
+// Fit (w,h) under both the long-edge and total-area caps, preserving aspect ratio. The long-edge
+// cap defaults to the *probed* device limit (see safeCanvas) so weak GPUs — some Android phones
+// cap below 4096 — are respected too, not just the static ceiling.
+export function fitWithin(w: number, h: number, maxDim = maxRenderableEdge(MAX_SOURCE), maxArea = MAX_SOURCE_AREA): number {
   const edgeScale = Math.min(1, maxDim / Math.max(w, h));
   const areaScale = Math.min(1, Math.sqrt(maxArea / (w * h)));
   return Math.min(edgeScale, areaScale);

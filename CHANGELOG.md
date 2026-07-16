@@ -23,8 +23,17 @@ Fixes "impossible to save/export my edited photo" reported by users on both mobi
   **COPY IMG** button that puts the actual rendered PNG on the clipboard
   (`navigator.clipboard.write([ClipboardItem])`); the link button is relabeled/clarified.
 
-Regression test: `tests/export.spec.ts` loads a 24 MP synthetic image and asserts the export is
-capped to ≤ 4096 px, non-blank, and still dithered.
+**Cross-device hardening (Android + old iOS).** The cap is not a hard-coded number: `safeCanvas.ts`
+**probes the real device limit** at runtime (draws a marker on a square canvas and reads it back;
+an over-limit canvas silently blanks). Some low-end Android GPUs cap a canvas dimension below 4096
+(`GL_MAX_TEXTURE_SIZE`), and old iOS caps area lower — the probe picks the largest size that
+actually renders (4096 → 3072 → 2048 → …), so load and export both respect the device. Android's
+save path is covered by the same `deliver.ts` logic (Web Share where available, `<a download>`
+fallback — which, unlike iOS, works on Android).
+
+Regression tests: `tests/export.spec.ts` (desktop) and a mobile/touch case in `tests/mobile.spec.ts`
+(Pixel 5 project) both load a 24 MP synthetic image and assert the export is capped to ≤ 4096 px,
+non-blank, and still dithered.
 
 ## [0.1.0] — 2026-07-08
 
