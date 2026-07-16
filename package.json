@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "test:android": "bash scripts/android-test.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
