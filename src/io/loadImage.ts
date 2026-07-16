@@ -15,9 +15,45 @@ export interface SourceImage {
   natH: number;
 }
 
+// Hard ceiling on the original we keep for full-resolution export. Camera photos are often
+// 4032×3024 (12 MP) or larger (48 MP ⇒ 8000×6000); a canvas that big overflows the per-canvas
+// limits mobile browsers enforce (iOS Safari caps total area at ~16.7 M px = 4096², and older
+// devices far lower). Over the limit, drawImage/getImageData/toBlob silently yield a BLANK
+// canvas — so the exported PNG loses every effect while the ≤1024 preview stays correct. We
+// downscale the kept bitmap on load so nothing downstream can exceed a safe raster size.
+// "Lychee hotfix" — see CHANGELOG.md.
+export const MAX_SOURCE = 4096;
+const MAX_SOURCE_AREA = 4096 * 4096; // 16.7 M px — the modern iOS Safari ceiling
+
+// Fit (w,h) under both the long-edge and total-area caps, preserving aspect ratio.
+export function fitWithin(w: number, h: number, maxDim = MAX_SOURCE, maxArea = MAX_SOURCE_AREA): number {
+  const edgeScale = Math.min(1, maxDim / Math.max(w, h));
+  const areaScale = Math.min(1, Math.sqrt(maxArea / (w * h)));
+  return Math.min(edgeScale, areaScale);
+}
+
 export async function loadImageFile(file: File, maxDim = 1024): Promise<SourceImage> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await capBitmap(await createImageBitmap(file));
   return fromBitmap(bitmap, maxDim);
+}
+
+// If the decoded image exceeds the safe raster size, re-raster it down to fit and hand back a
+// smaller ImageBitmap (closing the oversized original). Drawing an arbitrarily large source
+// onto a capped-size destination canvas is allowed; it's a canvas *of* that size that isn't.
+export async function capBitmap(bitmap: ImageBitmap): Promise<ImageBitmap> {
+  const s = fitWithin(bitmap.width, bitmap.height);
+  if (s >= 1) return bitmap;
+  const w = Math.max(1, Math.round(bitmap.width * s));
+  const h = Math.max(1, Math.round(bitmap.height * s));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  return createImageBitmap(canvas);
 }
 
 export function fromBitmap(bitmap: ImageBitmap | HTMLImageElement, maxDim: number): SourceImage {

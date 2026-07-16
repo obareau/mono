@@ -6,7 +6,8 @@ import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { downscale } from "../engine/pipelineCache";
 import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
-import { effectiveStyle, isPlainStyle, type ExportOptions, type ExportFormat } from "../io/export";
+import { effectiveStyle, isPlainStyle, loadExportOptions, type ExportOptions, type ExportFormat } from "../io/export";
+import { copyBlobToClipboard, canvasToPngBlob } from "../io/deliver";
 import { openExportDialog } from "./exportDialog";
 import {
   shareURL, STARTER_PRESETS,
@@ -16,7 +17,7 @@ import {
 import { randomStack } from "../io/randomize";
 import { getMasksVersion, allMasks } from "../io/maskStore";
 import type { PipelineResult } from "../engine/pipeline";
-import { loadImageFile, fromBitmap } from "../io/loadImage";
+import { loadImageFile, fromBitmap, MAX_SOURCE } from "../io/loadImage";
 import { buildControl, el } from "./controls";
 
 // Renders the whole interface and keeps the canvas in sync with the store.
@@ -87,7 +88,9 @@ export function mountApp(root: HTMLElement): void {
   let hasVector = false, hasTermText = false, hasTermHtml = false;
   const openBtn = btn("OPEN IMAGE", "primary", () => fileInput.click());
 
-  const EXPORT_MAX = 4096;
+  // Cap every raster export at the same safe size the source is capped to on load, so a big
+  // export canvas never silently comes back blank on mobile (the "lychee hotfix"). See loadImage.
+  const EXPORT_MAX = MAX_SOURCE;
   const previewLongEdge = () => Math.max(store.source!.w, store.source!.h);
   const nativeLongEdge = () => Math.min(EXPORT_MAX, Math.max(store.source!.natW, store.source!.natH));
   function targetLongEdge(o: ExportOptions): number {
@@ -95,13 +98,12 @@ export function mountApp(root: HTMLElement): void {
       case "1x": return previewLongEdge();
       case "2x": return Math.min(EXPORT_MAX, previewLongEdge() * 2);
       case "native": return nativeLongEdge();
-      default: return Math.min(8192, Math.max(16, Math.round(o.customPx)));
+      default: return Math.min(EXPORT_MAX, Math.max(16, Math.round(o.customPx)));
     }
   }
 
-  // PNG: re-run the stack at the chosen resolution (terminal results just rescale), then
-  // recolour for ink/paper/transparent if the style isn't plain black-on-white.
-  function exportRaster(o: ExportOptions) {
+  // Render the current result to an offscreen canvas at the chosen export resolution.
+  function renderExportCanvas(o: ExportOptions): HTMLCanvasElement {
     const src = store.source!;
     const off = document.createElement("canvas");
     if (lastResult?.terminal) renderToCanvas(off, lastResult, targetLongEdge(o) / previewLongEdge());
@@ -109,7 +111,13 @@ export function mountApp(root: HTMLElement): void {
     else renderToCanvas(off, runPipeline(src, store.stack));
     const style = effectiveStyle(o);
     if (!isPlainStyle(style)) recolorCanvas(off, style);
-    exportPNG(off, "mono.png");
+    return off;
+  }
+
+  // PNG: re-run the stack at the chosen resolution (terminal results just rescale), then hand
+  // the encoded blob to the share sheet (mobile) or a download (desktop).
+  function exportRaster(o: ExportOptions) {
+    return exportPNG(renderExportCanvas(o), "mono.png");
   }
 
   // SVG/PDF: re-run to the last vector-capable filter at native resolution, then write.
@@ -119,23 +127,37 @@ export function mountApp(root: HTMLElement): void {
     const scene = runToVector(hiSrc, store.stack);
     if (!scene) return;
     const style = effectiveStyle(o);
-    if (o.format === "svg") downloadText(sceneToSVG(scene, style), "mono.svg", "image/svg+xml");
-    else downloadBytes(
+    if (o.format === "svg") return downloadText(sceneToSVG(scene, style), "mono.svg", "image/svg+xml");
+    return downloadBytes(
       sceneToPDF(scene, { pageSize: o.pageSize, marginMM: o.marginMM, mode: o.pdfMode, dpi: o.dpi, ink: style.ink, paper: style.paper, transparent: style.transparent }),
       "mono.pdf", "application/pdf",
     );
   }
 
-  function runExport(o: ExportOptions) {
+  async function runExport(o: ExportOptions) {
     if (!store.source) return;
     try {
-      if (o.format === "png") exportRaster(o);
-      else if (o.format === "svg" || o.format === "pdf") exportVectorFile(o);
-      else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) exportText(t, "mono.txt"); }
-      else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) downloadText(h, "mono.html", "text/html"); }
+      if (o.format === "png") await exportRaster(o);
+      else if (o.format === "svg" || o.format === "pdf") await exportVectorFile(o);
+      else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) await exportText(t, "mono.txt"); }
+      else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) await downloadText(h, "mono.html", "text/html"); }
     } catch (err) {
       console.warn("[mono] export failed:", err);
-      toast("Export failed — try a smaller scale or a different format");
+      toast("Export failed — try a smaller scale or format");
+    }
+  }
+
+  // Copy the current result straight to the clipboard as a PNG, so a paste anywhere yields the
+  // edited photo (not a link). Uses the preview resolution to stay within clipboard limits.
+  async function copyImage() {
+    if (!store.source) return;
+    try {
+      const off = renderExportCanvas({ ...loadExportOptions(), format: "png", scale: "1x" });
+      const blob = await canvasToPngBlob(off);
+      toast((await copyBlobToClipboard(blob)) ? "Image copied to clipboard" : "Copy not supported — use Export");
+    } catch (err) {
+      console.warn("[mono] copy image failed:", err);
+      toast("Copy failed — try Export instead");
     }
   }
 
@@ -148,6 +170,8 @@ export function mountApp(root: HTMLElement): void {
     openExportDialog({ formats, onExport: runExport });
   }
   const exportBtn = btn("EXPORT…", "", openExport);
+  const copyImgBtn = btn("COPY IMG", "", copyImage);
+  copyImgBtn.title = "Copy the edited image to the clipboard";
   const shareBtn = btn("COPY LINK", "", async () => {
     const url = shareURL(store.serialize());
     history.replaceState(null, "", url);
@@ -159,6 +183,7 @@ export function mountApp(root: HTMLElement): void {
       shareBtn.textContent = "COPY LINK";
     }
   });
+  shareBtn.title = "Copy a link that recreates these filters (not the image)";
   const undoBtn = btn("UNDO", "", () => store.undo());
   const redoBtn = btn("REDO", "", () => store.redo());
   undoBtn.title = "Undo (⌘Z / Ctrl+Z)";
@@ -172,7 +197,7 @@ export function mountApp(root: HTMLElement): void {
 
   const helpBtn = btn("?", "", openHelp);
   helpBtn.title = "Keyboard & gestures (?)";
-  headerRight.append(openBtn, undoBtn, redoBtn, shareBtn, exportBtn, helpBtn);
+  headerRight.append(openBtn, undoBtn, redoBtn, copyImgBtn, shareBtn, exportBtn, helpBtn);
 
   // keyboard: undo / redo (ignore while typing in a text field)
   window.addEventListener("keydown", (e) => {
