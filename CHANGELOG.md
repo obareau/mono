@@ -2,6 +2,16 @@
 
 ## Lychee hotfix — 2026-07-16
 
+**Mobile save no longer depends on a scripted download or auto-share** (fixes export working in
+Samsung Internet but not Brave on the same tablet). Root cause: user-activation expiry — after the
+Export tap, the multi-second pipeline render + async PNG encode outlive the gesture token, and Brave
+(stricter than Samsung Internet) then silently drops both `<a download>.click()` and
+`navigator.share`. Fix: on any touch device, export now shows the rendered image in a result window
+for a **long-press "Save image"** (the one path reliable across Brave / Samsung Internet / Firefox /
+in-app WebViews), plus a **Share** button when available — tapping Share is a *fresh* gesture, so it
+works even in Brave. Real mobile browsers get a full-resolution `blob:` image; in-app WebViews get a
+downscaled `data:` URL (their save menu can't resolve `blob:`). Desktop keeps the direct download.
+
 **Every export now reports its outcome.** Instead of a silent download (and the guesswork of "did
 it save?"), every Export / Copy action ends in a status window: **SAVED ✓** / **SHARED ✓** /
 **COPIED ✓**, or a failure with a **fallback** — a vector/text format that can't be written on the

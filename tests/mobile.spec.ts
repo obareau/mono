@@ -50,12 +50,13 @@ test("mobile: oversized photo exports capped and with effects", async ({ page })
   await expect(page.locator(".modal")).toBeVisible();
   await page.locator(".modal-row", { hasText: "Scale" }).locator("select").selectOption({ label: "Native" });
 
-  const dl = page.waitForEvent("download");
+  // On touch, export does NOT rely on a (flaky) download — it shows a long-press save window with
+  // the rendered image, so we inspect that image directly.
   await page.locator(".modal .btn.primary", { hasText: "EXPORT" }).click();
-  const path = await (await dl).path();
+  await expect(page.locator(".save-modal")).toBeVisible();
+  const src = await page.locator(".save-img").getAttribute("src");
+  expect(src ?? "").toMatch(/^(blob:|data:image\/)/);
 
-  const { readFileSync } = await import("fs");
-  const url = "data:image/png;base64," + readFileSync(path!).toString("base64");
   const stats = await page.evaluate(async (u) => {
     const img = new Image();
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = u; });
@@ -66,7 +67,7 @@ test("mobile: oversized photo exports capped and with effects", async ({ page })
     const levels = new Set<number>(); let nonWhite = 0;
     for (let i = 0; i < d.length; i += 4) { levels.add(d[i]); if (d[i] < 250) nonWhite++; }
     return { w: c.width, h: c.height, levels: levels.size, nonWhite };
-  }, url);
+  }, src);
 
   expect(Math.max(stats.w, stats.h)).toBeLessThanOrEqual(4096); // capped
   expect(stats.nonWhite).toBeGreaterThan(1000);                 // not blank

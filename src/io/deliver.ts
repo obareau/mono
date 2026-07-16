@@ -5,9 +5,20 @@
 // desktop we keep the direct download, which is the expected behaviour. Part of the
 // "lychee hotfix".
 
-// Coarse pointer + no hover ≈ a touch device, where the share sheet is the right affordance.
-function isTouchDevice(): boolean {
+// Coarse pointer + no hover ≈ a touch device. On these, a script-triggered <a download> and even
+// navigator.share are unreliable (Brave silently drops both once the tap's user-activation token
+// has expired — which it has, after a multi-second pipeline render + async encode). So mobile uses
+// a long-press "Save image" result window instead, with a Share button that carries a fresh tap.
+export function isTouchDevice(): boolean {
   return typeof matchMedia === "function" && matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+
+// True if the platform can share this File (surface exists AND accepts files). Existence of the
+// API doesn't guarantee it works (Brave), but a Share button tap is a fresh gesture, so it's worth
+// offering when this is truthy.
+export function canShareFile(file: File): boolean {
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  return typeof nav.share === "function" && !!nav.canShare?.({ files: [file] });
 }
 
 // In-app WebViews (Facebook/Messenger, Instagram, etc.) are restricted browsers: `<a download>`
