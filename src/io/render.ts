@@ -1,6 +1,6 @@
 import type { PipelineResult } from "../engine/pipeline";
 import { hexToRgb, type InkStyle } from "./export";
-import { deliverBlob, canvasToPngBlob } from "./deliver";
+import { deliverBlob, type DeliverOutcome } from "./deliver";
 
 // Paint a pipeline result onto a canvas. Buffer results become a 1:1 black & white bitmap;
 // terminal results (ASCII) draw themselves at the requested output resolution.
@@ -53,13 +53,6 @@ export function recolorCanvas(canvas: HTMLCanvasElement, style: InkStyle): void 
   ctx.putImageData(img, 0, 0);
 }
 
-export function exportText(text: string, name = "mono.txt"): Promise<void> {
+export function exportText(text: string, name = "mono.txt"): Promise<DeliverOutcome> {
   return deliverBlob(new Blob([text], { type: "text/plain" }), name);
-}
-
-// Encode the canvas to PNG and hand it off (share sheet on mobile, download on desktop).
-// Rejects if the canvas came back blank — the caller surfaces that instead of saving nothing.
-export async function exportPNG(canvas: HTMLCanvasElement, name = "mono.png"): Promise<void> {
-  const blob = await canvasToPngBlob(canvas);
-  await deliverBlob(blob, name);
 }

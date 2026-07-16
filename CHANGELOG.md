@@ -2,6 +2,14 @@
 
 ## Lychee hotfix — 2026-07-16
 
+**Every export now reports its outcome.** Instead of a silent download (and the guesswork of "did
+it save?"), every Export / Copy action ends in a status window: **SAVED ✓** / **SHARED ✓** /
+**COPIED ✓**, or a failure with a **fallback** — a vector/text format that can't be written on the
+device offers **SAVE AS PNG** and **OPEN IN CHROME**, and a raster that the browser refused to
+download falls back to the long-press save image. (`ui/saveOverlay.ts › openExportResult`,
+`deliver.ts` now returns the delivery outcome.)
+
+
 Fixes "impossible to save/export my edited photo" reported by users on both mobile and desktop
 (the live preview looked correct, but the exported image came back blank / without effects, and
 "copy" only produced a link to the app, not the photo). Three root causes, all addressed:

@@ -47,6 +47,9 @@ test("oversized camera image still exports with effects", async ({ page }) => {
   await page.locator(".modal .btn.primary", { hasText: "EXPORT" }).click();
   const path = await (await dl).path();
 
+  // every export reports its outcome in a status window
+  await expect(page.locator(".modal-title", { hasText: "SAVED" })).toBeVisible();
+
   const { readFileSync } = await import("fs");
   const dataUrl = "data:image/png;base64," + readFileSync(path!).toString("base64");
   const histo = await page.evaluate(async (url) => {

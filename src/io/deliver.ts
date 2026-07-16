@@ -43,21 +43,29 @@ function triggerDownload(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000); // give slow mobile downloads time to start
 }
 
+export type DeliverOutcome = "shared" | "downloaded" | "cancelled" | "failed";
+
 // Deliver a finished file. Prefers the native share sheet on touch devices (with a File the OS
-// can save), and always falls back to a download. Must be called from a user gesture.
-export async function deliverBlob(blob: Blob, filename: string): Promise<void> {
+// can save), and falls back to a download. Reports what happened so the caller can show a status.
+// Must be called from a user gesture.
+export async function deliverBlob(blob: Blob, filename: string): Promise<DeliverOutcome> {
   const file = new File([blob], filename, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (isTouchDevice() && typeof nav.share === "function" && nav.canShare?.({ files: [file] })) {
     try {
       await nav.share({ files: [file], title: filename });
-      return; // shared (or the user cancelled the sheet) — do not also download
+      return "shared";
     } catch (err) {
-      if ((err as DOMException)?.name === "AbortError") return; // user dismissed the sheet
+      if ((err as DOMException)?.name === "AbortError") return "cancelled"; // user dismissed sheet
       // any other failure: fall through to a plain download
     }
   }
-  triggerDownload(blob, filename);
+  try {
+    triggerDownload(blob, filename);
+    return "downloaded";
+  } catch {
+    return "failed";
+  }
 }
 
 // Copy a raster result to the clipboard as a real PNG (not a link), so a paste anywhere yields

@@ -1,6 +1,6 @@
 import type { VectorScene } from "../filters/types";
 import { hexToRgb, MM_TO_PT, PAGE_PT, type InkStyle, type PdfOptions } from "./export";
-import { deliverBlob } from "./deliver";
+import { deliverBlob, type DeliverOutcome } from "./deliver";
 
 // Serialize a VectorScene (ink primitives on a paper ground) to SVG or PDF. Both are
 // dependency-free. Coordinates are image pixels; the PDF can fit-to-page or tile at a DPI.
@@ -187,10 +187,10 @@ function f(n: number): string {
   return (Math.round(n * 100) / 100).toString();
 }
 
-export function downloadText(text: string, name: string, mime: string): Promise<void> {
+export function downloadText(text: string, name: string, mime: string): Promise<DeliverOutcome> {
   return deliverBlob(new Blob([text], { type: mime }), name);
 }
 
-export function downloadBytes(bytes: Uint8Array, name: string, mime: string): Promise<void> {
+export function downloadBytes(bytes: Uint8Array, name: string, mime: string): Promise<DeliverOutcome> {
   return deliverBlob(new Blob([bytes as BlobPart], { type: mime }), name);
 }

@@ -4,11 +4,11 @@ import type { Filter } from "../filters/types";
 import { defaultParams } from "../filters/types";
 import { runPipeline, runToVector, lastVectorIndex } from "../engine/pipeline";
 import { downscale } from "../engine/pipelineCache";
-import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
+import { renderToCanvas, exportText, recolorCanvas } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
 import { effectiveStyle, isPlainStyle, loadExportOptions, type ExportOptions, type ExportFormat } from "../io/export";
-import { copyBlobToClipboard, canvasToPngBlob, isInAppBrowser, chromeIntentUrl } from "../io/deliver";
-import { openSaveOverlay } from "./saveOverlay";
+import { copyBlobToClipboard, canvasToPngBlob, deliverBlob, isInAppBrowser, chromeIntentUrl, type DeliverOutcome } from "../io/deliver";
+import { openExportResult } from "./saveOverlay";
 import { openExportDialog } from "./exportDialog";
 import {
   shareURL, STARTER_PRESETS,
@@ -117,45 +117,97 @@ export function mountApp(root: HTMLElement): void {
     return off;
   }
 
-  // PNG: re-run the stack at the chosen resolution (terminal results just rescale), then hand
-  // the encoded blob to the share sheet (mobile) or a download (desktop). Inside a restricted
-  // in-app browser (Messenger/Instagram), where downloads and share are dead ends, show the
-  // image for a long-press save instead.
-  function exportRaster(o: ExportOptions) {
-    const off = renderExportCanvas(o);
-    if (isInAppBrowser()) { openSaveOverlay(off, chromeIntentUrl()); return Promise.resolve(); }
-    return exportPNG(off, "mono.png");
+  // A fallback that re-runs export as a PNG — offered when a vector/text format can't be saved.
+  const savePngAction = (o: ExportOptions) => ({ label: "SAVE AS PNG", primary: true, onClick: () => runExport({ ...o, format: "png" }) });
+  const openInChrome = () => ({ label: "OPEN IN CHROME", href: chromeIntentUrl() });
+
+  // Turn a raw delivery outcome into the status window. `image` is the rendered canvas, shown for
+  // a long-press save when the automatic paths failed.
+  function reportDelivery(outcome: DeliverOutcome, filename: string, image?: HTMLCanvasElement) {
+    if (outcome === "cancelled") return; // user dismissed the share sheet — no window needed
+    if (outcome === "shared") openExportResult({ title: "SHARED ✓", message: `${filename} sent to the share sheet.` });
+    else if (outcome === "downloaded") openExportResult({ title: "SAVED ✓", message: `${filename} saved to your device.` });
+    else openExportResult({ // failed
+      title: "SAVE MANUALLY",
+      message: "Your browser blocked the download. Long-press the image below to save it.",
+      image, actions: [openInChrome()],
+    });
   }
 
-  // SVG/PDF: re-run to the last vector-capable filter at native resolution, then write.
-  function exportVectorFile(o: ExportOptions) {
+  // PNG: re-run the stack at the chosen resolution, then hand the blob to share/download. In a
+  // restricted in-app browser (Messenger/Instagram) go straight to the long-press save window.
+  async function exportRaster(o: ExportOptions) {
+    const off = renderExportCanvas(o);
+    if (isInAppBrowser()) {
+      openExportResult({ title: "SAVE IMAGE", image: off, actions: [openInChrome()] });
+      return;
+    }
+    let blob: Blob;
+    try {
+      blob = await canvasToPngBlob(off);
+    } catch {
+      // full-resolution canvas came back blank (device limit) — offer a safe preview-size copy
+      openExportResult({
+        title: "REDUCED SIZE",
+        message: "Full resolution is too large for this device — here's a smaller copy to save.",
+        image: renderExportCanvas({ ...o, scale: "1x" }),
+      });
+      return;
+    }
+    reportDelivery(await deliverBlob(blob, "mono.png"), "mono.png", off);
+  }
+
+  // SVG/PDF: re-run to the last vector-capable filter at native resolution, then write. These are
+  // real file downloads, which in-app browsers can't do — there, offer the PNG fallback instead.
+  async function exportVectorFile(o: ExportOptions) {
+    if (isInAppBrowser()) {
+      openExportResult({
+        title: `CAN'T SAVE ${o.format.toUpperCase()}`,
+        message: `${o.format.toUpperCase()} export needs a real browser on this device.`,
+        actions: [savePngAction(o), openInChrome()],
+      });
+      return;
+    }
     const src = store.source!;
     const hiSrc = src.bitmap ? fromBitmap(src.bitmap, nativeLongEdge()) : src;
     const scene = runToVector(hiSrc, store.stack);
-    if (!scene) return;
+    if (!scene) { openExportResult({ title: "NOTHING TO EXPORT", message: "This stack has no vector output." }); return; }
     const style = effectiveStyle(o);
-    if (o.format === "svg") return downloadText(sceneToSVG(scene, style), "mono.svg", "image/svg+xml");
-    return downloadBytes(
-      sceneToPDF(scene, { pageSize: o.pageSize, marginMM: o.marginMM, mode: o.pdfMode, dpi: o.dpi, ink: style.ink, paper: style.paper, transparent: style.transparent }),
-      "mono.pdf", "application/pdf",
-    );
+    const name = `mono.${o.format}`;
+    const outcome = o.format === "svg"
+      ? await downloadText(sceneToSVG(scene, style), name, "image/svg+xml")
+      : await downloadBytes(
+          sceneToPDF(scene, { pageSize: o.pageSize, marginMM: o.marginMM, mode: o.pdfMode, dpi: o.dpi, ink: style.ink, paper: style.paper, transparent: style.transparent }),
+          name, "application/pdf",
+        );
+    reportDelivery(outcome, name);
+  }
+
+  // TXT/HTML (ASCII): plain-text downloads; same in-app fallback to PNG.
+  async function exportTextFile(o: ExportOptions, text: string) {
+    if (isInAppBrowser()) {
+      openExportResult({
+        title: `CAN'T SAVE ${o.format.toUpperCase()}`,
+        message: `${o.format.toUpperCase()} export needs a real browser on this device.`,
+        actions: [savePngAction(o), openInChrome()],
+      });
+      return;
+    }
+    const name = `mono.${o.format}`;
+    const outcome = o.format === "txt" ? await exportText(text, name) : await downloadText(text, name, "text/html");
+    reportDelivery(outcome, name);
   }
 
   async function runExport(o: ExportOptions) {
     if (!store.source) return;
-    // In-app browsers can't download files; only the PNG long-press save works there.
-    if (o.format !== "png" && isInAppBrowser()) {
-      toast("Open in Chrome to export " + o.format.toUpperCase());
-      return;
-    }
     try {
       if (o.format === "png") await exportRaster(o);
       else if (o.format === "svg" || o.format === "pdf") await exportVectorFile(o);
-      else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) await exportText(t, "mono.txt"); }
-      else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) await downloadText(h, "mono.html", "text/html"); }
+      else if (o.format === "txt") { const t = lastResult?.terminal?.text?.(); if (t) await exportTextFile(o, t); }
+      else if (o.format === "html") { const h = lastResult?.terminal?.html?.(); if (h) await exportTextFile(o, h); }
     } catch (err) {
       console.warn("[mono] export failed:", err);
-      toast("Export failed — try a smaller scale or format");
+      openExportResult({ title: "EXPORT FAILED", message: "Something went wrong. Try a smaller scale, or export as PNG.", actions: [savePngAction(o)] });
     }
   }
 
@@ -166,13 +218,13 @@ export function mountApp(root: HTMLElement): void {
     try {
       const off = renderExportCanvas({ ...loadExportOptions(), format: "png", scale: "1x" });
       // In-app browsers block the clipboard too — offer the long-press save instead.
-      if (isInAppBrowser()) { openSaveOverlay(off, chromeIntentUrl()); return; }
+      if (isInAppBrowser()) { openExportResult({ title: "SAVE IMAGE", image: off, actions: [openInChrome()] }); return; }
       const blob = await canvasToPngBlob(off);
-      if (await copyBlobToClipboard(blob)) toast("Image copied to clipboard");
-      else openSaveOverlay(off, chromeIntentUrl()); // clipboard unavailable — long-press fallback
+      if (await copyBlobToClipboard(blob)) openExportResult({ title: "COPIED ✓", message: "Image copied to the clipboard — paste it anywhere." });
+      else openExportResult({ title: "SAVE IMAGE", message: "Copy isn't available here — long-press the image to save it.", image: off, actions: [openInChrome()] });
     } catch (err) {
       console.warn("[mono] copy image failed:", err);
-      toast("Copy failed — try Export instead");
+      openExportResult({ title: "COPY FAILED", message: "Couldn't copy. Try Export instead." });
     }
   }
 
