@@ -7,7 +7,8 @@ import { downscale } from "../engine/pipelineCache";
 import { renderToCanvas, exportPNG, exportText, recolorCanvas } from "../io/render";
 import { sceneToSVG, sceneToPDF, downloadText, downloadBytes } from "../io/vector";
 import { effectiveStyle, isPlainStyle, loadExportOptions, type ExportOptions, type ExportFormat } from "../io/export";
-import { copyBlobToClipboard, canvasToPngBlob } from "../io/deliver";
+import { copyBlobToClipboard, canvasToPngBlob, isInAppBrowser, chromeIntentUrl } from "../io/deliver";
+import { openSaveOverlay } from "./saveOverlay";
 import { openExportDialog } from "./exportDialog";
 import {
   shareURL, STARTER_PRESETS,
@@ -117,9 +118,13 @@ export function mountApp(root: HTMLElement): void {
   }
 
   // PNG: re-run the stack at the chosen resolution (terminal results just rescale), then hand
-  // the encoded blob to the share sheet (mobile) or a download (desktop).
+  // the encoded blob to the share sheet (mobile) or a download (desktop). Inside a restricted
+  // in-app browser (Messenger/Instagram), where downloads and share are dead ends, show the
+  // image for a long-press save instead.
   function exportRaster(o: ExportOptions) {
-    return exportPNG(renderExportCanvas(o), "mono.png");
+    const off = renderExportCanvas(o);
+    if (isInAppBrowser()) { openSaveOverlay(off, chromeIntentUrl()); return Promise.resolve(); }
+    return exportPNG(off, "mono.png");
   }
 
   // SVG/PDF: re-run to the last vector-capable filter at native resolution, then write.
@@ -138,6 +143,11 @@ export function mountApp(root: HTMLElement): void {
 
   async function runExport(o: ExportOptions) {
     if (!store.source) return;
+    // In-app browsers can't download files; only the PNG long-press save works there.
+    if (o.format !== "png" && isInAppBrowser()) {
+      toast("Open in Chrome to export " + o.format.toUpperCase());
+      return;
+    }
     try {
       if (o.format === "png") await exportRaster(o);
       else if (o.format === "svg" || o.format === "pdf") await exportVectorFile(o);
@@ -155,8 +165,11 @@ export function mountApp(root: HTMLElement): void {
     if (!store.source) return;
     try {
       const off = renderExportCanvas({ ...loadExportOptions(), format: "png", scale: "1x" });
+      // In-app browsers block the clipboard too — offer the long-press save instead.
+      if (isInAppBrowser()) { openSaveOverlay(off, chromeIntentUrl()); return; }
       const blob = await canvasToPngBlob(off);
-      toast((await copyBlobToClipboard(blob)) ? "Image copied to clipboard" : "Copy not supported — use Export");
+      if (await copyBlobToClipboard(blob)) toast("Image copied to clipboard");
+      else openSaveOverlay(off, chromeIntentUrl()); // clipboard unavailable — long-press fallback
     } catch (err) {
       console.warn("[mono] copy image failed:", err);
       toast("Copy failed — try Export instead");

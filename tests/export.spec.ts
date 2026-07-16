@@ -70,3 +70,36 @@ test("oversized camera image still exports with effects", async ({ page }) => {
   // 3) dithered: Floyd on a gradient collapses to ~2 levels
   expect(histo.levels, "exported image must contain the effect").toBeLessThan(8);
 });
+
+// Inside an in-app WebView (Facebook Messenger etc.) downloads and the Share API are dead ends,
+// so export must fall back to a long-press "Save image" overlay backed by a data: URL.
+test.describe("in-app browser (Messenger WebView)", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (Linux; Android 13; SM-T870) AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/122.0.0.0 Mobile Safari/537.36 [FBAN/EMA;FBAV/420.0.0.0;]",
+  });
+
+  test("export offers a long-press save overlay instead of a broken download", async ({ page }) => {
+    let downloadFired = false;
+    page.on("download", () => { downloadFired = true; });
+
+    await page.goto("/");
+    await page.locator('input[accept="image/*"]').first().setInputFiles("src/io/demo.jpg");
+    await expect.poll(() => page.locator("canvas.output").evaluate((c) => (c as HTMLCanvasElement).width)).not.toBe(640);
+    await page.locator(".panel-left .palette.two button", { hasText: "FLOYD" }).first().click();
+    await page.waitForTimeout(1000);
+
+    await page.keyboard.press("e");
+    await expect(page.locator(".modal")).toBeVisible();
+    await page.locator(".modal .btn.primary", { hasText: "EXPORT" }).click();
+
+    // the save overlay appears with the image as a data: URL (long-press-savable in a WebView)
+    await expect(page.locator(".save-modal")).toBeVisible();
+    const src = await page.locator(".save-img").getAttribute("src");
+    expect(src ?? "").toMatch(/^data:image\//);
+    // and an intent:// escape hatch to reopen in Chrome
+    await expect(page.locator(".save-modal a", { hasText: "OPEN IN CHROME" })).toHaveAttribute("href", /^intent:\/\//);
+    expect(downloadFired, "must not attempt a (broken) download in a WebView").toBe(false);
+  });
+});

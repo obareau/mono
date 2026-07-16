@@ -10,6 +10,29 @@ function isTouchDevice(): boolean {
   return typeof matchMedia === "function" && matchMedia("(hover: none) and (pointer: coarse)").matches;
 }
 
+// In-app WebViews (Facebook/Messenger, Instagram, etc.) are restricted browsers: `<a download>`
+// for blob: URLs silently does nothing, navigator.share is often absent or a no-op, and
+// window.open is blocked. When we're inside one, exporting via those APIs dead-ends — the caller
+// should instead show the image for a long-press save (see the save overlay). Detected by UA.
+export function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /\b(FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|Line\/|Twitter|TwitterAndroid|Snapchat|TikTok|Pinterest|GSA)\b/i.test(ua)
+    || /; wv\)/.test(ua); // generic Android WebView marker
+}
+
+// An Android intent: URL that reopens this page in Chrome — the escape hatch to a real browser
+// where full-quality export/share works. Falls back to the default browser if Chrome is absent.
+export function chromeIntentUrl(url = typeof location !== "undefined" ? location.href : ""): string {
+  try {
+    const u = new URL(url);
+    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=https;package=com.android.chrome;`
+      + `action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(u.toString())};end`;
+  } catch {
+    return url;
+  }
+}
+
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

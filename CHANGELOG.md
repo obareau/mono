@@ -31,9 +31,21 @@ actually renders (4096 → 3072 → 2048 → …), so load and export both respe
 save path is covered by the same `deliver.ts` logic (Web Share where available, `<a download>`
 fallback — which, unlike iOS, works on Android).
 
-Regression tests: `tests/export.spec.ts` (desktop) and a mobile/touch case in `tests/mobile.spec.ts`
-(Pixel 5 project) both load a 24 MP synthetic image and assert the export is capped to ≤ 4096 px,
-non-blank, and still dithered.
+**In-app browsers (Facebook Messenger / Instagram WebView).** A user who opens the link from a
+Messenger message lands in a restricted Android WebView where `<a download>` silently does
+nothing, `navigator.share` is often absent, and `window.open` is blocked — so every normal export
+path dead-ends ("unable to export" on a Samsung tablet). Fix: detect the in-app WebView by UA
+(`deliver.ts › isInAppBrowser`) and route Export / Copy Image to a **long-press save overlay**
+(`ui/saveOverlay.ts`) — the rendered image is shown as a compact **`data:` URL** `<img>` (not
+`blob:`, which the WebView "Save image" menu can't resolve; downscaled to ≤ 1440 px, PNG→JPEG
+fallback to stay under the WebView data-URL ceiling), with a "long-press → Save image" hint and an
+**`intent://…package=com.android.chrome`** escape hatch to reopen full-quality in Chrome. Vector
+formats (SVG/PDF) toast "Open in Chrome to export" in that context.
+
+Regression tests: `tests/export.spec.ts` (desktop + a UA-spoofed Messenger-WebView case) and a
+mobile/touch case in `tests/mobile.spec.ts` (Pixel 5) load a 24 MP synthetic image and assert the
+export is capped to ≤ 4096 px, non-blank, and still dithered — and, in the WebView, that a
+data-URL save overlay appears instead of a broken download.
 
 ## [0.1.0] — 2026-07-08
 

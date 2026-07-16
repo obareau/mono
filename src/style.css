@@ -255,6 +255,16 @@ html, body {
 .modal-divider { font-family: var(--ui); font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--gray-4); border-top: 1px solid var(--platinum-sh); padding-top: 8px; margin-top: 2px; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--platinum-sh); }
 
+/* image save overlay (in-app browsers: long-press to save) */
+.save-modal { width: 420px; }
+.save-img {
+  display: block; max-width: 100%; max-height: 62vh; margin: 0 auto;
+  border: 1px solid var(--ink); background: #fff;
+  /* must NOT suppress the native context menu — that's what lets long-press "Save image" work */
+  -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto;
+}
+.save-hint { font-family: var(--ui); font-size: 11px; line-height: 1.5; color: var(--ink); text-align: center; }
+
 /* keyboard & gestures cheatsheet */
 .help-body { gap: 6px; }
 .help-row { display: flex; align-items: center; gap: 10px; }
