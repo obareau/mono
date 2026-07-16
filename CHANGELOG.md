@@ -2,6 +2,14 @@
 
 ## Lychee hotfix — 2026-07-16
 
+**Choose where the file goes + clearer copy buttons.** Desktop export now opens the native
+"Save As" destination picker when available (File System Access API — Chrome/Edge), so the user
+picks the folder/filename instead of it landing silently in Downloads; falls back to a download on
+Firefox/Safari and to the share sheet on mobile (`deliver.ts › saveViaPicker`). And the toolbar
+button that kept getting mistaken for "copy my photo" is renamed: **COPY IMAGE** (puts the picture
+on the clipboard) vs **SHARE FILTERS** (copies a link that recreates the filter recipe, not the
+image) — a user reported "copy" sending them to the MONO page instead of copying their picture.
+
 **Mobile save no longer depends on a scripted download or auto-share** (fixes export working in
 Samsung Internet but not Brave on the same tablet). Root cause: user-activation expiry — after the
 Export tap, the multi-second pipeline render + async PNG encode outlive the gesture token, and Brave

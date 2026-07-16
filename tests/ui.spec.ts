@@ -4,6 +4,10 @@ import { test, expect } from "@playwright/test";
 // default stack (Tone + Error Diffusion) → "STACK · 2".
 
 test.beforeEach(async ({ page }) => {
+  // Headless Chromium exposes the File System Access "Save As" picker, but Playwright can't dismiss
+  // its native dialog, so an export would hang. Delete it to exercise the download fallback (the
+  // path Firefox/Safari take); one test below re-adds a stub to cover the picker itself.
+  await page.addInitScript(() => { try { delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker; } catch { /* ignore */ } });
   await page.goto("/");
 });
 
@@ -82,8 +86,8 @@ test("clear empties the stack", async ({ page }) => {
   await expect(page.locator(".sidebar .empty")).toBeVisible();
 });
 
-test("copy link writes a #s= hash to the URL", async ({ page }) => {
-  await page.getByRole("button", { name: /COPY LINK/ }).click();
+test("share filters writes a #s= hash to the URL", async ({ page }) => {
+  await page.getByRole("button", { name: /SHARE FILTERS/ }).click();
   await expect(page).toHaveURL(/#s=/);
 });
 
@@ -106,6 +110,25 @@ test("export PNG downloads mono.png", async ({ page }) => {
     page.getByRole("button", { name: "EXPORT", exact: true }).click(),
   ]);
   expect(download.suggestedFilename()).toBe("mono.png");
+});
+
+test("export PNG uses the native Save-As destination picker when available", async ({ page }) => {
+  // Re-add a stubbed File System Access picker (the beforeEach deleted it) and verify export routes
+  // through it — this is what gives a real desktop Chrome/Edge a "choose where to save" dialog.
+  await page.addInitScript(() => {
+    (window as unknown as { __picked?: boolean }).__picked = false;
+    (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = async () => {
+      (window as unknown as { __picked?: boolean }).__picked = true;
+      return { createWritable: async () => ({ write: async () => {}, close: async () => {} }) };
+    };
+  });
+  await page.reload();
+  await loadImage(page);
+  await page.getByRole("button", { name: /EXPORT/ }).click();
+  await page.locator(".modal select").first().selectOption("png");
+  await page.getByRole("button", { name: "EXPORT", exact: true }).click();
+  await expect(page.locator(".modal-title", { hasText: "SAVED" })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __picked?: boolean }).__picked)).toBe(true);
 });
 
 test("adjusting a slider keeps the canvas at full resolution", async ({ page }) => {

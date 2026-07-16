@@ -54,11 +54,38 @@ function triggerDownload(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000); // give slow mobile downloads time to start
 }
 
-export type DeliverOutcome = "shared" | "downloaded" | "cancelled" | "failed";
+type SaveFilePicker = (opts: {
+  suggestedName?: string;
+  types?: { description?: string; accept: Record<string, string[]> }[];
+}) => Promise<{ createWritable: () => Promise<{ write: (d: Blob) => Promise<void>; close: () => Promise<void> }> }>;
 
-// Deliver a finished file. Prefers the native share sheet on touch devices (with a File the OS
-// can save), and falls back to a download. Reports what happened so the caller can show a status.
-// Must be called from a user gesture.
+// A native "Save As" dialog letting the user pick the destination folder + filename (File System
+// Access API — Chrome/Edge desktop). Returns null when unsupported so the caller can fall back to
+// a plain download. "saved" on success, "cancelled" if the user dismisses the picker.
+async function saveViaPicker(blob: Blob, filename: string): Promise<DeliverOutcome | null> {
+  const picker = (window as unknown as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
+  if (typeof picker !== "function") return null;
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
+  try {
+    const handle = await picker({
+      suggestedName: filename,
+      types: ext ? [{ description: filename, accept: { [blob.type || "application/octet-stream"]: [ext] } }] : undefined,
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return "saved";
+  } catch (err) {
+    if ((err as DOMException)?.name === "AbortError") return "cancelled"; // user closed the dialog
+    return null; // unsupported/blocked (e.g. no gesture) — let the caller download instead
+  }
+}
+
+export type DeliverOutcome = "shared" | "saved" | "downloaded" | "cancelled" | "failed";
+
+// Deliver a finished file. On touch devices prefers the native share sheet (the OS then chooses
+// the destination); on desktop offers a native "Save As" destination picker when available, else a
+// plain download. Reports what happened so the caller can show a status. Must run in a user gesture.
 export async function deliverBlob(blob: Blob, filename: string): Promise<DeliverOutcome> {
   const file = new File([blob], filename, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
@@ -68,9 +95,11 @@ export async function deliverBlob(blob: Blob, filename: string): Promise<Deliver
       return "shared";
     } catch (err) {
       if ((err as DOMException)?.name === "AbortError") return "cancelled"; // user dismissed sheet
-      // any other failure: fall through to a plain download
+      // any other failure: fall through to the picker / download
     }
   }
+  const picked = await saveViaPicker(blob, filename); // "saved" | "cancelled" | null (unsupported)
+  if (picked) return picked;
   try {
     triggerDownload(blob, filename);
     return "downloaded";

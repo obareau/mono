@@ -30,6 +30,9 @@ test("oversized camera image still exports with effects", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
 
+  // Delete the FS Access picker (headless can't dismiss it) so this desktop test takes the download
+  // fallback path it asserts on.
+  await page.addInitScript(() => { try { delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker; } catch { /* ignore */ } });
   await page.goto("/");
   const buffer = await makeBigImageBuffer(page);
   await page.locator('input[accept="image/*"]').first().setInputFiles({ name: "camera.png", mimeType: "image/png", buffer });

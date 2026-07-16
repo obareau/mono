@@ -158,9 +158,10 @@ export function mountApp(root: HTMLElement): void {
 
   // Report a desktop delivery outcome in a status window (downloads are reliable there).
   function reportDelivery(outcome: DeliverOutcome, filename: string, fallback?: ExportOptions) {
-    if (outcome === "cancelled") return;
+    if (outcome === "cancelled") return; // user closed the save/share dialog
     if (outcome === "shared") openExportResult({ title: "SHARED ✓", message: `${filename} sent to the share sheet.` });
-    else if (outcome === "downloaded") openExportResult({ title: "SAVED ✓", message: `${filename} saved to your device.` });
+    else if (outcome === "saved") openExportResult({ title: "SAVED ✓", message: `${filename} saved to the chosen location.` });
+    else if (outcome === "downloaded") openExportResult({ title: "SAVED ✓", message: `${filename} downloaded to your device.` });
     else openExportResult({ title: "EXPORT FAILED", message: `Couldn't save ${filename}. Try exporting as PNG.`, actions: fallback ? [savePngAction(fallback)] : [] });
   }
 
@@ -263,20 +264,22 @@ export function mountApp(root: HTMLElement): void {
     openExportDialog({ formats, onExport: runExport });
   }
   const exportBtn = btn("EXPORT…", "", openExport);
-  const copyImgBtn = btn("COPY IMG", "", copyImage);
-  copyImgBtn.title = "Copy the edited image to the clipboard";
-  const shareBtn = btn("COPY LINK", "", async () => {
+  const copyImgBtn = btn("COPY IMAGE", "", copyImage);
+  copyImgBtn.title = "Copy the edited image to the clipboard (paste it anywhere)";
+  // Distinct from COPY IMAGE: this shares a link that recreates the *filters*, not the photo.
+  // Labelled "SHARE FILTERS" because users kept expecting "copy link" to copy their image.
+  const shareBtn = btn("SHARE FILTERS", "", async () => {
     const url = shareURL(store.serialize());
     history.replaceState(null, "", url);
     try {
       await navigator.clipboard.writeText(url);
-      shareBtn.textContent = "COPIED ✓";
-      setTimeout(() => (shareBtn.textContent = "COPY LINK"), 1200);
+      shareBtn.textContent = "LINK COPIED ✓";
+      setTimeout(() => (shareBtn.textContent = "SHARE FILTERS"), 1400);
     } catch {
-      shareBtn.textContent = "COPY LINK";
+      shareBtn.textContent = "SHARE FILTERS";
     }
   });
-  shareBtn.title = "Copy a link that recreates these filters (not the image)";
+  shareBtn.title = "Copy a link that recreates these filters — not the image (use COPY IMAGE for that)";
   const undoBtn = btn("UNDO", "", () => store.undo());
   const redoBtn = btn("REDO", "", () => store.redo());
   undoBtn.title = "Undo (⌘Z / Ctrl+Z)";
